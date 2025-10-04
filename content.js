@@ -282,6 +282,8 @@ let __fcSelection = {
   highlightBox: null,
   prevCursor: '',
   hoverEl: null,
+  persistentHighlight: null, // Highlight for element being fact-checked
+  scrollTimeout: null,
 };
 
 // ------------------------------
@@ -302,6 +304,7 @@ function startFactCheckSelectionMode() {
   window.addEventListener('mousemove', onFcMouseMove, { capture: true, passive: true });
   window.addEventListener('click', onFcClick, { capture: true, once: false });
   window.addEventListener('keydown', onFcKeyDown, { capture: true });
+  window.addEventListener('scroll', onFcScroll, { capture: true, passive: true });
 }
 
 function stopFactCheckSelectionMode() {
@@ -310,12 +313,24 @@ function stopFactCheckSelectionMode() {
   window.removeEventListener('mousemove', onFcMouseMove, { capture: true });
   window.removeEventListener('click', onFcClick, { capture: true });
   window.removeEventListener('keydown', onFcKeyDown, { capture: true });
+  window.removeEventListener('scroll', onFcScroll, { capture: true });
   try { document.body.style.cursor = __fcSelection.prevCursor || ''; } catch (_) {}
   if (__fcSelection.highlightBox && __fcSelection.highlightBox.parentNode) {
     try { __fcSelection.highlightBox.remove(); } catch (_) {}
   }
   __fcSelection.highlightBox = null;
   __fcSelection.hoverEl = null;
+  if (__fcSelection.scrollTimeout) {
+    clearTimeout(__fcSelection.scrollTimeout);
+    __fcSelection.scrollTimeout = null;
+  }
+}
+
+function removePersistentHighlight() {
+  if (__fcSelection.persistentHighlight && __fcSelection.persistentHighlight.parentNode) {
+    try { __fcSelection.persistentHighlight.remove(); } catch (_) {}
+  }
+  __fcSelection.persistentHighlight = null;
 }
 
 function createHighlightBox() {
@@ -358,12 +373,74 @@ function onFcMouseMove(e) {
   updateHighlightBoxForElement(el);
 }
 
+function onFcScroll(e) {
+  if (!__fcSelection.active) return;
+  
+  // Hide highlight immediately when scrolling
+  if (__fcSelection.highlightBox) {
+    __fcSelection.highlightBox.style.width = '0px';
+    __fcSelection.highlightBox.style.height = '0px';
+  }
+  
+  // Clear any pending timeout
+  if (__fcSelection.scrollTimeout) {
+    clearTimeout(__fcSelection.scrollTimeout);
+  }
+  
+  // After scroll stops, update highlight if still hovering
+  __fcSelection.scrollTimeout = setTimeout(() => {
+    if (__fcSelection.active && __fcSelection.hoverEl) {
+      updateHighlightBoxForElement(__fcSelection.hoverEl);
+    }
+  }, 150);
+}
+
 function onFcKeyDown(e) {
   if (!__fcSelection.active) return;
   if (e.key === 'Escape') {
     e.preventDefault();
     stopFactCheckSelectionMode();
+    removePersistentHighlight();
   }
+}
+
+function createPersistentHighlight(element) {
+  // Remove any existing persistent highlight
+  removePersistentHighlight();
+  
+  const box = document.createElement('div');
+  box.className = 'fnf-fc-persistent-highlight';
+  box.dataset.fnfElement = 'true';
+  box.style.position = 'absolute';
+  box.style.zIndex = '999997';
+  box.style.pointerEvents = 'none';
+  box.style.border = '3px solid #22c55e';
+  box.style.borderRadius = '8px';
+  box.style.background = 'rgba(34, 197, 94, 0.12)';
+  box.style.boxShadow = '0 0 0 4px rgba(34, 197, 94, 0.1)';
+  box.style.transition = 'opacity 0.3s';
+  
+  // Position relative to element
+  const updatePosition = () => {
+    if (!element || !element.isConnected) {
+      removePersistentHighlight();
+      return;
+    }
+    const rect = element.getBoundingClientRect();
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    box.style.top = (rect.top + scrollY - 3) + 'px';
+    box.style.left = (rect.left + scrollX - 3) + 'px';
+    box.style.width = (rect.width + 6) + 'px';
+    box.style.height = (rect.height + 6) + 'px';
+  };
+  
+  updatePosition();
+  document.body.appendChild(box);
+  __fcSelection.persistentHighlight = box;
+  
+  return box;
 }
 
 async function onFcClick(e) {
@@ -378,7 +455,20 @@ async function onFcClick(e) {
   e.preventDefault();
   e.stopPropagation();
   const target = e.target;
-  stopFactCheckSelectionMode();
+  
+  // Stop selection mode but don't remove hover highlight yet
+  __fcSelection.active = false;
+  window.removeEventListener('mousemove', onFcMouseMove, { capture: true });
+  window.removeEventListener('click', onFcClick, { capture: true });
+  window.removeEventListener('keydown', onFcKeyDown, { capture: true });
+  window.removeEventListener('scroll', onFcScroll, { capture: true });
+  try { document.body.style.cursor = __fcSelection.prevCursor || ''; } catch (_) {}
+  
+  // Remove the hover highlight box
+  if (__fcSelection.highlightBox && __fcSelection.highlightBox.parentNode) {
+    try { __fcSelection.highlightBox.remove(); } catch (_) {}
+  }
+  __fcSelection.highlightBox = null;
 
   // Extract text from clicked element
   let container = target;
@@ -402,6 +492,9 @@ async function onFcClick(e) {
   console.log('Extracted text (sent to backend):', text);
   console.log('Container HTML:', container.outerHTML);
 
+  // Create persistent highlight for the element being fact-checked
+  createPersistentHighlight(container);
+  
   // Show loading overlay attached to the clicked element (absolute relative to element)
   try {
     const loadingHtml = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span style="font-weight:600;">Fact checking…</span></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>`;
@@ -414,6 +507,9 @@ async function onFcClick(e) {
       console.log('Fact-check response from background:', response);
       
       try { loading.remove(); } catch (_) {}
+      // Remove persistent highlight after loading
+      removePersistentHighlight();
+      
       if (response && response.success) {
         // Show result attached to the element
         const result = response.result || {};
@@ -489,44 +585,108 @@ async function onFcClick(e) {
         }
       } else {
         console.error('Fact-check failed:', response);
+        removePersistentHighlight();
         attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
       }
     } catch (err) {
       console.error('Fact-check exception:', err);
       try { loading.remove(); } catch (_) {}
+      removePersistentHighlight();
       attachOverlayToElement(container, `❌ Fact-check error: ${String(err?.message || err)}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
     }
   } catch (errOuter) {
     console.error('Fact-check selection error', errOuter);
+    removePersistentHighlight();
   }
 }
 
 function attachOverlayToElement(anchorEl, html, options = {}) {
   if (!anchorEl || !anchorEl.appendChild) return { remove() {} };
-  // Ensure the anchor is a positioned container so absolute children attach relative to it
-  try {
-    const cs = window.getComputedStyle(anchorEl);
-    if (cs && cs.position === 'static') {
-      anchorEl.dataset.fnfPrevPosition = anchorEl.style.position || '';
-      anchorEl.style.position = 'relative';
+  
+  // Get the bounding rect of the anchor element
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  
+  // Create container for overlay + tail
+  const container = document.createElement('div');
+  container.className = 'fnf-attached-overlay-container';
+  container.dataset.fnfElement = 'true';
+  container.style.position = 'absolute';
+  container.style.zIndex = '99999';
+  container.style.pointerEvents = 'none';
+  
+  // Calculate position: bottom center of the anchor element
+  const overlayWidth = 480;
+  const tailHeight = 16;
+  const gap = 8;
+  
+  // Position container at bottom center of anchor element
+  const centerX = anchorRect.left + scrollX + (anchorRect.width / 2);
+  const bottomY = anchorRect.bottom + scrollY + gap;
+  
+  container.style.left = (centerX - overlayWidth / 2) + 'px';
+  container.style.top = bottomY + 'px';
+  container.style.width = overlayWidth + 'px';
+  
+  // Ensure it doesn't go off screen horizontally
+  const viewportWidth = window.innerWidth;
+  const containerLeft = parseFloat(container.style.left);
+  const margin = 10;
+  
+  if (containerLeft < margin) {
+    container.style.left = margin + 'px';
+  } else if (containerLeft + overlayWidth > viewportWidth - margin) {
+    container.style.left = (viewportWidth - overlayWidth - margin) + 'px';
+  }
+  
+  // Create the tail (triangle pointing up)
+  const tail = document.createElement('div');
+  tail.className = 'fnf-overlay-tail';
+  tail.dataset.fnfElement = 'true';
+  tail.style.position = 'absolute';
+  tail.style.top = '0px';
+  tail.style.left = '50%';
+  tail.style.transform = 'translateX(-50%) translateY(-100%)';
+  tail.style.width = '0';
+  tail.style.height = '0';
+  tail.style.borderLeft = tailHeight + 'px solid transparent';
+  tail.style.borderRight = tailHeight + 'px solid transparent';
+  
+  // Determine background color for tail
+  let tailBorderColor = '#3b82f6';
+  if (options.backgroundColor) {
+    if (typeof options.backgroundColor === 'string') {
+      // Extract color from gradient if possible, or use as-is
+      if (options.backgroundColor.includes('gradient')) {
+        // Try to extract first color from gradient
+        const match = options.backgroundColor.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\)/);
+        if (match) tailBorderColor = match[0];
+        else if (options.backgroundColor.includes('#dc2626')) tailBorderColor = '#dc2626';
+        else if (options.backgroundColor.includes('#6366f1')) tailBorderColor = '#6366f1';
+      } else {
+        tailBorderColor = options.backgroundColor;
+      }
     }
-  } catch (_) {}
+  }
+  
+  tail.style.borderBottom = tailHeight + 'px solid ' + tailBorderColor;
+  tail.style.filter = 'drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.15))';
+  
+  // Create the overlay bubble
   const overlay = document.createElement('div');
   overlay.className = 'fnf-attached-overlay';
   overlay.dataset.fnfElement = 'true';
-  overlay.style.position = 'absolute';
-  overlay.style.top = options.top || '8px';
-  overlay.style.right = options.right || '8px';
+  overlay.style.position = 'relative';
   overlay.style.background = options.backgroundColor || 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
   overlay.style.color = '#ffffff';
   overlay.style.padding = '20px 22px';
   overlay.style.borderRadius = '16px';
   overlay.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
-  overlay.style.zIndex = '99999';
   overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   overlay.style.fontSize = '14px';
-  overlay.style.maxWidth = '480px';
-  overlay.style.minWidth = '360px';
+  overlay.style.width = '100%';
+  overlay.style.boxSizing = 'border-box';
   overlay.style.pointerEvents = 'auto';
   overlay.style.backdropFilter = 'blur(10px)';
   overlay.innerHTML = `
@@ -550,14 +710,28 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
       " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
     </div>
   `;
+  
+  // Assemble: container has tail + overlay
+  container.appendChild(tail);
+  container.appendChild(overlay);
+  
   const closeBtn = overlay.querySelector('.close-overlay');
-  try { closeBtn.addEventListener('click', () => { try { overlay.remove(); } catch (_) {} }); } catch (_) {}
-  try { anchorEl.appendChild(overlay); } catch (_) {
-    try { document.body.appendChild(overlay); } catch (_) {}
-  }
+  try { 
+    closeBtn.addEventListener('click', () => { 
+      try { container.remove(); } catch (_) {} 
+    }); 
+  } catch (_) {}
+  
+  // Append to body instead of anchor element so it can escape container bounds
+  try { 
+    document.body.appendChild(container); 
+  } catch (_) {}
+  
   // Mark all children as extension elements
-  markAllChildrenAsExtensionElements(overlay);
-  return overlay;
+  markAllChildrenAsExtensionElements(container);
+  
+  // Return container for removal
+  return container;
 }
 
 // ------------------------------
