@@ -51,8 +51,8 @@ try {
 // - Handles API calls to the backend
 // - Provides context menu to analyze selected text
 
-const DEFAULT_BACKEND_URL = 'https://your-backend.example.com/api/analyze';
-const FNF_BACKEND_ANALYSIS_ENABLED = false; // Disable backend until available
+const DEFAULT_BACKEND_URL = 'https://next-prompcik.vercel.app/app/evaluate';
+const FNF_BACKEND_ANALYSIS_ENABLED = true; // Backend is now available
 
 
 async function callBackendAnalyze({ text, url, source }) {
@@ -66,7 +66,7 @@ async function callBackendAnalyze({ text, url, source }) {
     };
   }
   const backendUrl = (await chrome.storage?.sync?.get?.('backendUrl'))?.backendUrl || DEFAULT_BACKEND_URL;
-  const body = { text, pageUrl: url, source };
+  const body = { text };
   const response = await fetch(backendUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

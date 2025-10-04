@@ -1,8 +1,8 @@
 // Content script - runs on every webpage
 console.log('DOM Reader & Overlay Extension loaded');
 // Feature flags
-// - disable backend analysis requests while developing extraction
-const FNF_BACKEND_ANALYSIS_ENABLED = false;
+// - Backend analysis is now enabled
+const FNF_BACKEND_ANALYSIS_ENABLED = true;
 // (removed) demo overlays & auto discovery flags
 
 // Function to read DOM information
@@ -369,7 +369,7 @@ async function onFcClick(e) {
   try {
     const loading = attachOverlayToElement(container, 'Fact checking…', { backgroundColor: 'rgba(30, 64, 175, 0.95)' });
 
-    // Call background for analysis (mocked)
+    // Call background for analysis
     try {
       const response = await chrome.runtime.sendMessage({ action: 'analyzeText', text, url: window.location.href, source: 'selection-click' });
       try { loading.remove(); } catch (_) {}
@@ -377,18 +377,23 @@ async function onFcClick(e) {
         // Show result attached to the element
         const result = response.result || {};
         const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
-        const label = result?.label || result?.classification || 'Analysis Result';
-        const confidence = typeof result?.confidence === 'number' ? (result.confidence * 100).toFixed(1) + '%' : (result?.score ? (Math.round(result.score * 1000) / 10) + '%' : undefined);
-        const summary = result?.summary || result?.explanation || '';
-        const titleLine = confidence ? `${label} (${confidence})` : label;
+        
+        // Check if content is flagged as fake news
+        const isFakeNews = result.flagged === true;
+        const label = isFakeNews ? '⚠️ Fake News Detected' : '✓ Content Verified';
+        const summary = isFakeNews 
+          ? 'This content has been flagged as potentially misleading or false information.' 
+          : 'This content appears to be legitimate.';
+        const backgroundColor = isFakeNews ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)';
+        
         const html = `
           <div>
-            <strong>🛡️ ${titleLine}</strong><br>
-            ${summary ? `<div style=\"margin-top:6px; font-size:12px; line-height:1.4;\">${summary}</div>` : ''}
+            <strong>${label}</strong><br>
+            <div style=\"margin-top:6px; font-size:12px; line-height:1.4;\">${summary}</div>
             <div style=\"margin-top:8px; font-size:11px; opacity:0.85;\">Snippet: ${preview}</div>
           </div>
         `;
-        attachOverlayToElement(container, html, { backgroundColor: 'rgba(16, 185, 129, 0.95)' });
+        attachOverlayToElement(container, html, { backgroundColor });
       } else {
         attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
       }
