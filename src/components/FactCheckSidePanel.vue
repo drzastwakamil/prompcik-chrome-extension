@@ -150,7 +150,11 @@ export default {
       return this.result?.flagged === true;
     },
     percentage() {
-      return this.result?.confidence ? Math.round(this.result.confidence * 100) : 0;
+      // Use the higher value between similarity and confidence
+      const similarity = this.result?.similarity || 0;
+      const confidence = this.result?.confidence || 0;
+      const maxScore = Math.max(similarity, confidence);
+      return Math.round(maxScore * 100);
     },
     reasoning() {
       return this.result?.reasoning || '';

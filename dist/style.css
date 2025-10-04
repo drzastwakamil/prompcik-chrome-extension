@@ -1,20 +1,20 @@
 
-.fnf-bubble-content[data-v-7e26f3c2] {
+.fnf-bubble-content[data-v-7d9e6c13] {
   width: 100%;
 }
-.spinner[data-v-7e26f3c2] {
+.spinner[data-v-7d9e6c13] {
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin-7e26f3c2 0.8s linear infinite;
+  animation: spin-7d9e6c13 0.8s linear infinite;
 }
-@keyframes spin-7e26f3c2 {
+@keyframes spin-7d9e6c13 {
 to { transform: rotate(360deg);
 }
 }
-.content-preview[data-v-7e26f3c2] {
+.content-preview[data-v-7d9e6c13] {
   background: rgba(0,0,0,0.2);
   padding: 14px 16px;
   border-radius: 10px;
@@ -25,7 +25,7 @@ to { transform: rotate(360deg);
   border-left: 3px solid rgba(255,255,255,0.4);
   margin-bottom: 0;
 }
-.learn-more-btn[data-v-7e26f3c2] {
+.learn-more-btn[data-v-7d9e6c13] {
   font-family: inherit;
 }
 
