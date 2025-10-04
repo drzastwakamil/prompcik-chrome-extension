@@ -356,7 +356,14 @@ async function onFcClick(e) {
     const maybe = findClosestMatchingAncestor(target, platformSelectors);
     if (maybe) container = maybe;
   } catch (_) {}
+  
   const text = (extractTextFromKnownContainer(container) || getVisibleTextFromElement(container) || '').trim();
+  
+  // Log the fact-checked HTML element and extracted text that will be sent to backend
+  console.log('Fact-checking clicked element:', target);
+  console.log('Container element used for extraction:', container);
+  console.log('Extracted text (sent to backend):', text);
+  console.log('Container HTML:', container.outerHTML);
 
   // Show loading overlay attached to the clicked element (absolute relative to element)
   try {
