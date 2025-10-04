@@ -1,0 +1,8 @@
+node_modules
+dist/*.js
+dist/*.html
+dist/chunks
+dist/assets
+dist/content.css
+!dist/manifest.json
+!dist/styles.css

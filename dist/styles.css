@@ -1,0 +1,135 @@
+/* Styles for extension overlays */
+.extension-overlay {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.extension-overlay:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.close-overlay:hover {
+  opacity: 0.7;
+}
+
+/* Absolute positioned text overlays - scroll with content */
+.fnf-text-overlay-absolute {
+  animation: fadeIn 0.2s ease-out;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Comic book style bubble animation */
+.fnf-attached-overlay-container {
+  animation: bubblePopIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bubblePopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+  }
+  70% {
+    transform: scale(1.05) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Tail animation */
+.fnf-overlay-tail {
+  animation: tailFadeIn 0.25s ease-out 0.1s both;
+}
+
+@keyframes tailFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-100%) scale(1);
+  }
+}
+
+/* Bubble content transitions - smooth state changes */
+.fnf-bubble-content-wrapper {
+  transition: opacity 0.2s ease;
+}
+
+.fnf-attached-overlay {
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Persistent highlight with smooth transitions */
+.fnf-fc-persistent-highlight {
+  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* Notification animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* Side panel animations */
+@keyframes fnfFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fnfSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* (removed) .fnf-processed highlight — auto discovery removed */
+

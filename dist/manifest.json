@@ -18,21 +18,14 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "dist/popup.html"
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["dist/content.js"],
-      "css": ["dist/styles.css"],
+      "js": ["content.js"],
+      "css": ["styles.css", "content-style.css"],
       "run_at": "document_end"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["dist/chunks/*.js"],
-      "matches": ["<all_urls>"]
     }
   ]
 }
-

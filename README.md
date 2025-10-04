@@ -1,126 +1,205 @@
-# Fake News Filter Chrome Extension
+# Fake News Filter - Chrome Extension
 
-A Chrome extension that helps users identify and fact-check potentially misleading content on webpages. Select or click on any text to verify its authenticity against a fact-checking database.
+A Chrome extension that helps users fact-check content on any webpage to identify potentially misleading information. **Now powered by Vue.js!**
 
-## Features
+## 🎯 Features
 
-- 🛡️ **Fact-check Content**: Start a selection mode, hover to highlight, click an element to fact-check its text
-- ✍️ **Text Selection Fact-check**: Select any text on a page to see a fact-check button
-- 📋 **Context Menu**: Right-click selected text to analyze it with the Fake News Filter
-- 🧰 **Floating Toolbar**: A small draggable toolbar appears on every page with quick access to fact-checking
-- 🎨 **Visual Overlays**: Results are displayed in beautiful, draggable overlays with detailed information
-- 📊 **Detailed Side Panel**: Click "Learn More" to see comprehensive fact-check analysis
+- 🛡️ **Fact-check any content** - Click on any element to verify information
+- 🎨 **Beautiful UI** - Modern, animated interface with smooth transitions
+- 🔍 **Element highlighting** - Visual feedback during selection
+- 📊 **Detailed results** - Confidence scores and detailed analysis
+- ⚡ **Fast & responsive** - Built with Vue.js for optimal performance
+- 🔧 **Draggable toolbar** - Floating toolbar for easy access
 
-## Installation
+## 🚀 Quick Start
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode" (toggle in top-right corner)
-3. Click "Load unpacked"
-4. Select the `chrome_extension` folder
-5. The extension should now appear in your extensions list
-6. **Important**: Refresh any open webpages for the extension to work on them
+### For Users (Install the Extension)
 
-## Usage
+1. **Build the extension:**
+   ```bash
+   npm install
+   npm run build
+   ```
 
-### Floating Toolbar (Primary UX)
-- Appears at the top-right of each page (draggable)
-- Click "🛡️ Fact-check" to start selection mode (ESC to cancel)
-- Results appear as overlays near the clicked element
+2. **Load in Chrome:**
+   - Go to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `dist/` folder
 
-### Extension Popup (Info-only)
-- Shows basic info; all actions are available directly via the on-page toolbar
+3. **Start using:**
+   - Visit any website
+   - Click the toolbar's "Fact-check" button
+   - Select any text element
+   - Get instant fact-checking results!
 
-### Fact-check Flow (On-demand)
-1. Click the popup button "🛡️ Fact-check (select element)"
-2. Move the cursor to highlight an element and click it
-3. A small overlay near the element shows: `Fact checking…`
-4. The extension gathers visible text from the clicked area and sends it to the background for analysis
-5. A mocked response is displayed in an overlay near the element, including a label, optional confidence, and a text snippet
+📖 **Detailed instructions:** See [INSTALL.md](./INSTALL.md)
 
-Notes:
-- No automatic scanning or analysis occurs; everything is user-initiated
-- Loading overlay uses the exact text `Fact checking…` without spinner or branding
-- Mocked backend responses are returned unless you enable a real backend
+### For Developers
 
-### How It Works
+```bash
+# Install dependencies
+npm install
 
-The extension provides multiple ways to fact-check content:
+# Development mode (auto-rebuild on changes)
+npm run dev
 
-1. **Element Selection Mode**: Click the Fact-check button in the floating toolbar, then hover and click any element on the page
-2. **Text Selection**: Simply select any text on the page and click the Fact-check button that appears
-3. **Context Menu**: Right-click on selected text and choose "Analyze with Fake News Filter"
+# Production build
+npm run build
+```
 
-All methods send the content to the backend API for analysis and display results with confidence scores.
+📚 **Development guide:** See [QUICK_START.md](./QUICK_START.md)
 
-## File Structure
+## 📁 Project Structure
 
 ```
 chrome_extension/
-├── manifest.json       # Extension configuration
-├── content.js          # Content script (runs on all pages)
-├── popup.html          # Extension popup UI
-├── popup.js            # Popup logic
-├── styles.css          # Overlay styles
-└── README.md           # This file
+├── src/                          # Vue.js source code
+│   ├── components/              # Vue components
+│   │   ├── FactCheckBubble.vue
+│   │   ├── FactCheckSidePanel.vue
+│   │   ├── FloatingToolbar.vue
+│   │   └── NotificationToast.vue
+│   ├── content/                 # Content script
+│   └── popup/                   # Extension popup
+├── dist/                        # Built extension (load this in Chrome)
+├── background.js                # Background service worker
+├── vite.config.js              # Build configuration
+└── package.json                # Dependencies
 ```
 
-## Note on Icons
+## 🏗️ Architecture
 
-The manifest references icon files (`icon16.png`, `icon48.png`, `icon128.png`) which are not included in this prototype. The extension will work without them, but you may see warnings in the console. To add icons:
+This extension is built with:
+- **Vue 3** - Modern reactive UI framework
+- **Vite** - Fast build tool
+- **Chrome Extension Manifest V3** - Latest extension standard
 
-1. Create PNG files with dimensions 16x16, 48x48, and 128x128 pixels
-2. Name them `icon16.png`, `icon48.png`, and `icon128.png`
-3. Place them in the root of the extension folder
+### Key Components
 
-## Technical Details
+1. **FactCheckBubble** - Shows fact-check results in a bubble overlay
+2. **FactCheckSidePanel** - Detailed information panel
+3. **FloatingToolbar** - On-page toolbar for quick access
+4. **NotificationToast** - User notifications
 
-1. **Content Script**: `content.js` is injected into every webpage and provides fact-checking functionality
-2. **Background Service Worker**: Handles API calls to the backend fact-checking service
-3. **Text Extraction**: Smart extraction of visible text from various social media platforms (Twitter, Facebook, Reddit, LinkedIn, YouTube)
-4. **Overlay System**: Creates absolutely positioned overlays with high z-index (999999) for results
-5. **Selection Mode**: Draws a highlight box around hovered elements and extracts their text content
-6. **Context Menu Integration**: Right-click menu option for quick fact-checking
-7. **Draggable UI**: All overlays and toolbars can be dragged and repositioned
+## 🔄 Recent Refactoring
 
-## Configuration
+This extension was recently refactored from vanilla JavaScript to Vue.js:
+- ✅ **Reduced complexity** - From 1256 lines of DOM manipulation to clean Vue components
+- ✅ **Better maintainability** - Component-based architecture
+- ✅ **Improved DX** - Better tooling and developer experience
+- ✅ **Same functionality** - All features preserved
 
-You can configure the backend URL:
-1. The extension stores the backend URL in Chrome's sync storage
-2. Default URL: `https://next-prompcik.vercel.app/api/evaluate`
-3. The backend analyzes text and returns fact-check results with confidence scores
+📖 **Learn more:** See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) and [REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)
 
-## Troubleshooting
+## 📖 Documentation
 
-### "Could not establish connection" Error
-This means the content script hasn't loaded on the current page yet. **Solution**: Refresh the webpage and try again.
+- **[INSTALL.md](./INSTALL.md)** - Installation instructions
+- **[QUICK_START.md](./QUICK_START.md)** - Get started in 3 steps
+- **[README_VUE.md](./README_VUE.md)** - Vue.js architecture overview
+- **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Detailed refactoring explanation
+- **[REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)** - Summary of changes
 
-This happens when:
-- You just installed the extension
-- You just reloaded the extension
-- The page was open before the extension was loaded
+## 🛠️ Development
 
-### Extension not working on certain pages
-Chrome extensions have restrictions on:
-- `chrome://` pages (settings, extensions, etc.)
-- Chrome Web Store pages
-- Some protected internal pages
+### Prerequisites
+- Node.js v16 or higher
+- npm or yarn
+- Google Chrome
 
-Try it on regular websites like Google, GitHub, or any news site.
+### Build Commands
 
-### Fact-check Tips
-- For best results, select or click elements with substantial text content
-- Press ESC to exit selection mode without clicking
-- Text selections must be at least 10 characters to trigger the fact-check button
-- The extension works best on social media posts, news articles, and comment sections
+```bash
+# Install dependencies
+npm install
 
-## Browser Compatibility
+# Development build (watch mode)
+npm run dev
 
-This extension uses Manifest V3 and is compatible with:
-- Chrome 88+
-- Edge 88+
-- Other Chromium-based browsers
+# Production build
+npm run build
 
-## License
+# Preview (optional)
+npm run preview
+```
 
-MIT License - Free to use and modify.
+### Making Changes
 
+1. Edit Vue components in `src/components/`
+2. Run `npm run build`
+3. Reload the extension in Chrome (`chrome://extensions/`)
+4. Refresh the test webpage
+
+## 🧪 Testing
+
+1. Load the extension in Chrome
+2. Navigate to any website (Twitter, Reddit, news sites, etc.)
+3. Look for the floating toolbar
+4. Click "🛡️ Fact-check"
+5. Click on any text element
+6. Verify the bubble shows results correctly
+7. Click "Learn More" to test the side panel
+
+## 🔧 Configuration
+
+### Backend URL
+The fact-checking backend URL can be configured in `background.js`:
+```javascript
+const DEFAULT_BACKEND_URL = 'https://tarcza-factcheck.vercel.app/api/evaluate';
+```
+
+### Permissions
+Required permissions are defined in `manifest-dist.json`:
+- `activeTab` - Access current tab
+- `scripting` - Inject content scripts
+- `contextMenus` - Right-click menu
+- `storage` - Store settings
+
+## 📝 Tech Stack
+
+- **Frontend:** Vue 3.4.21
+- **Build Tool:** Vite 5.2.0
+- **Extension Type:** Manifest V3
+- **Language:** JavaScript (ES modules)
+- **Styling:** Scoped CSS with animations
+
+## 🐛 Troubleshooting
+
+### Extension won't load
+- Ensure you selected the `dist/` folder
+- Run `npm run build` first
+
+### Changes not showing
+- Rebuild with `npm run build`
+- Reload extension in Chrome
+- Refresh the webpage
+
+### Build errors
+```bash
+rm -rf node_modules
+npm install
+npm run build
+```
+
+📖 **More help:** See [INSTALL.md](./INSTALL.md) troubleshooting section
+
+## 📄 License
+
+Copyright © 2024. All rights reserved.
+
+## 🤝 Contributing
+
+This is a private project. For questions or issues, please contact the maintainer.
+
+## 📞 Support
+
+For issues or questions:
+1. Check the [INSTALL.md](./INSTALL.md) troubleshooting section
+2. Review browser console for errors
+3. Check that the backend API is accessible
+
+---
+
+**Version:** 1.0.0  
+**Last Updated:** October 2024  
+**Built with:** Vue.js, Vite, Chrome Extension APIs

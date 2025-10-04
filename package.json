@@ -1,0 +1,25 @@
+{
+  "name": "fake-news-filter",
+  "version": "1.0.0",
+  "description": "Fact-check content on any webpage to identify potentially misleading information",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && npm run watch",
+    "watch": "npm run watch:content & npm run watch:popup",
+    "watch:content": "vite build --config vite.config.js --watch --mode development",
+    "watch:popup": "vite build --config vite.config.popup.js --watch --mode development",
+    "build": "npm run clean && npm run build:content && npm run build:popup && node scripts/post-build.js",
+    "build:content": "vite build --config vite.config.js",
+    "build:popup": "vite build --config vite.config.popup.js",
+    "clean": "rm -rf dist && mkdir -p dist",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.2.0",
+    "vite-plugin-web-extension": "^4.1.4"
+  }
+}
