@@ -3,10 +3,7 @@ console.log('DOM Reader & Overlay Extension loaded');
 // Feature flags
 // - disable backend analysis requests while developing extraction
 const FNF_BACKEND_ANALYSIS_ENABLED = false;
-// - disable demo overlays that auto-appear on page load
-const FNF_DEMO_OVERLAYS_ENABLED = false;
-// - disable automatic post discovery; only allow user-initiated analysis
-const FNF_POST_DISCOVERY_ENABLED = false;
+// (removed) demo overlays & auto discovery flags
 
 // Function to read DOM information
 function readDOM() {
@@ -159,11 +156,7 @@ function isElementActuallyVisible(el) {
   return true;
 }
 
-function getCenterElement() {
-  const x = Math.floor(window.innerWidth / 2);
-  const y = Math.floor(window.innerHeight / 2);
-  return document.elementFromPoint(x, y);
-}
+// (removed) getCenterElement — no longer used
 
 function findClosestMatchingAncestor(startEl, selectors) {
   let el = startEl;
@@ -203,56 +196,9 @@ function getUserSelectionText() {
   return text;
 }
 
-function getLargestVisibleArticleCandidate() {
-  const candidates = Array.from(document.querySelectorAll('article, [role="article"], .post, .feed, .story, .news, .card'));
-  let best = null;
-  let bestArea = 0;
-  for (const el of candidates) {
-    if (!isElementActuallyVisible(el)) continue;
-    const rect = el.getBoundingClientRect();
-    const width = Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0);
-    const height = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
-    const area = Math.max(0, width) * Math.max(0, height);
-    if (area > bestArea) {
-      bestArea = area;
-      best = el;
-    }
-  }
-  return best;
-}
+// (removed) getLargestVisibleArticleCandidate — auto post detection removed
 
-function findLikelyPostContainer() {
-  const center = getCenterElement();
-  const platformSelectors = [
-    // X / Twitter
-    'article[data-testid="tweet"]',
-    'div[data-testid="tweet"]',
-    // Facebook
-    'div[role="article"]',
-    'div[data-ad-preview] div[role="article"]',
-    // Reddit
-    'div[data-testid="post-container"]',
-    '.Post',
-    'shreddit-post',
-    // LinkedIn
-    'div.feed-shared-update-v2',
-    'div.feed-shared-inline-show-more-text',
-    // YouTube comments
-    'ytd-comment-thread-renderer',
-    // Generic
-    'article',
-    '[role="article"]'
-  ];
-
-  let container = null;
-  if (center) {
-    container = findClosestMatchingAncestor(center, platformSelectors);
-  }
-  if (!container) {
-    container = getLargestVisibleArticleCandidate();
-  }
-  return container;
-}
+// (removed) findLikelyPostContainer — auto post detection removed
 
 function extractTextFromKnownContainer(container) {
   if (!container) return '';
@@ -281,59 +227,9 @@ function extractTextFromKnownContainer(container) {
   return getVisibleTextFromElement(container);
 }
 
-function extractLikelyPostText() {
-  // 1) Use user selection if it's reasonably long
-  const selection = getUserSelectionText();
-  if (selection && selection.length >= 60) {
-    return { text: selection, strategy: 'selection' };
-  }
-  // 2) Find a likely post container near viewport center
-  const container = findLikelyPostContainer();
-  const text = extractTextFromKnownContainer(container);
-  if (text && text.length >= 60) {
-    return { text, strategy: 'container' };
-  }
-  // 3) Fallback: grab visible paragraphs in the viewport center
-  const fallback = getVisibleTextFromElement(document.body);
-  return { text: fallback, strategy: 'fallback' };
-}
+// (removed) extractLikelyPostText — auto post detection removed
 
-async function analyzeCurrentVisiblePost() {
-  const { text, strategy } = extractLikelyPostText();
-  console.log('text', text, 'strategy', strategy)
-  if (!text || text.length < 30) {
-    console.error('FakeNewsFilter: no sufficient text found for analysis', { strategy });
-    try {
-      // Trigger background debugger injection for diagnostics
-      await chrome.runtime.sendMessage({ action: 'debugExtraction', meta: { reason: 'NO_TEXT', url: location.href } });
-    } catch (_) {}
-    return { success: false, error: 'NO_TEXT' };
-  }
-  if (!FNF_BACKEND_ANALYSIS_ENABLED) {
-    // Development mode: do not call backend. Show a preview overlay only.
-    showAnalysisOverlay({ label: 'Text captured', summary: 'Backend disabled — preview only.' }, text);
-    return { success: true, previewOnly: true };
-  }
-  try {
-    const response = await chrome.runtime.sendMessage({
-      action: 'analyzeText',
-      text,
-      url: window.location.href,
-      source: `content-${strategy}`
-    });
-    if (response && response.success) {
-      showAnalysisOverlay(response.result, text);
-      return { success: true };
-    }
-    throw new Error(response?.error || 'Unknown error');
-  } catch (error) {
-    console.error('FakeNewsFilter: analysis error', { error: String(error) });
-    try {
-      await chrome.runtime.sendMessage({ action: 'debugExtraction', meta: { reason: 'ANALYSIS_ERROR', error: String(error), url: location.href } });
-    } catch (_) {}
-    return { success: false, error: error.message };
-  }
-}
+// (removed) analyzeCurrentVisiblePost — auto post detection removed
 
 function showAnalysisOverlay(result, analyzedText) {
   const label = result?.label || result?.classification || 'Analysis Result';
@@ -462,19 +358,16 @@ async function onFcClick(e) {
   } catch (_) {}
   const text = (extractTextFromKnownContainer(container) || getVisibleTextFromElement(container) || '').trim();
 
-  // Show loading overlay near clicked element (no spinner/brand required)
+  // Show loading overlay attached to the clicked element (absolute relative to element)
   try {
-    const rect = container.getBoundingClientRect();
-    const top = Math.max(8, rect.top + 8) + 'px';
-    const left = Math.max(8, rect.left + 8) + 'px';
-    const loading = addOverlayElement({ text: 'Fact checking…', top, left, backgroundColor: 'rgba(30, 64, 175, 0.95)' });
+    const loading = attachOverlayToElement(container, 'Fact checking…', { backgroundColor: 'rgba(30, 64, 175, 0.95)' });
 
     // Call background for analysis (mocked)
     try {
       const response = await chrome.runtime.sendMessage({ action: 'analyzeText', text, url: window.location.href, source: 'selection-click' });
-      loading.remove();
+      try { loading.remove(); } catch (_) {}
       if (response && response.success) {
-        // Show result anchored to element
+        // Show result attached to the element
         const result = response.result || {};
         const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
         const label = result?.label || result?.classification || 'Analysis Result';
@@ -484,21 +377,60 @@ async function onFcClick(e) {
         const html = `
           <div>
             <strong>🛡️ ${titleLine}</strong><br>
-            ${summary ? `<div style="margin-top:6px; font-size:12px; line-height:1.4;">${summary}</div>` : ''}
-            <div style="margin-top:8px; font-size:11px; opacity:0.85;">Snippet: ${preview}</div>
+            ${summary ? `<div style=\"margin-top:6px; font-size:12px; line-height:1.4;\">${summary}</div>` : ''}
+            <div style=\"margin-top:8px; font-size:11px; opacity:0.85;\">Snippet: ${preview}</div>
           </div>
         `;
-        addOverlayElement({ text: html, top, left, backgroundColor: 'rgba(16, 185, 129, 0.95)' });
+        attachOverlayToElement(container, html, { backgroundColor: 'rgba(16, 185, 129, 0.95)' });
       } else {
-        addOverlayElement({ text: `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, top, left, backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+        attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
       }
     } catch (err) {
       try { loading.remove(); } catch (_) {}
-      addOverlayElement({ text: `❌ Fact-check error: ${String(err?.message || err)}`, top, left, backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+      attachOverlayToElement(container, `❌ Fact-check error: ${String(err?.message || err)}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
     }
   } catch (errOuter) {
     console.error('Fact-check selection error', errOuter);
   }
+}
+
+function attachOverlayToElement(anchorEl, html, options = {}) {
+  if (!anchorEl || !anchorEl.appendChild) return { remove() {} };
+  // Ensure the anchor is a positioned container so absolute children attach relative to it
+  try {
+    const cs = window.getComputedStyle(anchorEl);
+    if (cs && cs.position === 'static') {
+      anchorEl.dataset.fnfPrevPosition = anchorEl.style.position || '';
+      anchorEl.style.position = 'relative';
+    }
+  } catch (_) {}
+  const overlay = document.createElement('div');
+  overlay.className = 'fnf-attached-overlay';
+  overlay.style.position = 'absolute';
+  overlay.style.top = options.top || '8px';
+  overlay.style.right = options.right || '8px';
+  overlay.style.backgroundColor = options.backgroundColor || 'rgba(30, 64, 175, 0.95)';
+  overlay.style.color = '#ffffff';
+  overlay.style.padding = '10px 12px';
+  overlay.style.borderRadius = '10px';
+  overlay.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+  overlay.style.zIndex = '99999';
+  overlay.style.fontFamily = 'Arial, sans-serif';
+  overlay.style.fontSize = '13px';
+  overlay.style.maxWidth = '360px';
+  overlay.style.pointerEvents = 'auto';
+  overlay.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="flex:1;">${html}</div>
+      <button class="close-overlay" style="background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer; line-height:1;">×</button>
+    </div>
+  `;
+  const closeBtn = overlay.querySelector('.close-overlay');
+  try { closeBtn.addEventListener('click', () => { try { overlay.remove(); } catch (_) {} }); } catch (_) {}
+  try { anchorEl.appendChild(overlay); } catch (_) {
+    try { document.body.appendChild(overlay); } catch (_) {}
+  }
+  return overlay;
 }
 
 // Function to fetch and display cat data
@@ -621,40 +553,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     showDOMInfo();
     sendResponse({ success: true });
     return false; // Synchronous response
-  } else if (request.action === 'analyzeVisiblePost') {
-    // Fire-and-forget: start analysis and ACK immediately
-    (async () => { await analyzeCurrentVisiblePost(); })();
-    sendResponse({ success: true, started: true });
-    return false;
   } else if (request.action === 'startFactCheckSelection') {
     try {
       startFactCheckSelectionMode();
-      sendResponse({ success: true });
-    } catch (error) {
-      sendResponse({ success: false, error: error.message });
-    }
-    return false;
-  } else if (request.action === 'getDiscoveryStatus') {
-    try {
-      const status = (window.__fnfPDS && typeof window.__fnfPDS.getStatus === 'function') ? window.__fnfPDS.getStatus() : { running: false };
-      sendResponse({ success: true, status });
-    } catch (error) {
-      sendResponse({ success: false, error: error.message });
-    }
-    return false;
-  } else if (request.action === 'getDiscoveredPosts') {
-    try {
-      const posts = (window.__fnfPDS && typeof window.__fnfPDS.getDiscoveredPosts === 'function') ? window.__fnfPDS.getDiscoveredPosts() : [];
-      sendResponse({ success: true, data: posts });
-    } catch (error) {
-      sendResponse({ success: false, error: error.message });
-    }
-    return false;
-  } else if (request.action === 'forceScan') {
-    try {
-      if (window.__fnfPDS && typeof window.__fnfPDS.scanInitialCandidates === 'function') {
-        window.__fnfPDS.scanInitialCandidates(document);
-      }
       sendResponse({ success: true });
     } catch (error) {
       sendResponse({ success: false, error: error.message });
@@ -700,310 +601,9 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
-// Demo overlays disabled by default (security requirement)
-if (FNF_DEMO_OVERLAYS_ENABLED) {
-  setTimeout(() => {
-    addOverlayElement({
-      text: '🎉 Extension Active! (Drag me)',
-      top: '20px',
-      right: '20px',
-      backgroundColor: 'rgba(59, 130, 246, 0.95)'
-    });
-    // Provide a quick action to analyze the visible post
-    const action = document.createElement('button');
-    action.textContent = '🛡️ Analyze visible post';
-    action.style.background = 'transparent';
-    action.style.border = '1px solid rgba(255,255,255,0.6)';
-    action.style.color = '#fff';
-    action.style.padding = '6px 8px';
-    action.style.borderRadius = '6px';
-    action.style.fontSize = '12px';
-    action.style.marginTop = '8px';
-    const container = addOverlayElement({
-      text: '<strong>Fake News Filter</strong><br/><span style="font-size:12px; opacity:0.9;">Analyze what\'s on screen</span>',
-      top: '60px',
-      right: '20px',
-      backgroundColor: 'rgba(16, 185, 129, 0.95)'
-    });
-    container.appendChild(action);
-    action.addEventListener('click', () => analyzeCurrentVisiblePost());
-  }, 1000);
-}
+// (removed) demo overlays and auto analyze button
 
-// ------------------------------------------------------------
-// PostDiscoveryService — efficiently finds and queues new posts
-// ------------------------------------------------------------
-(function initPostDiscoveryService() {
-  if (!FNF_POST_DISCOVERY_ENABLED) { return; }
-  const CANDIDATE_SELECTORS = [
-    'article[data-testid="tweet"]',
-    'div[data-testid="tweet"]',
-    'div[role="article"]',
-    'div[data-ad-preview] div[role="article"]',
-    'div[data-testid="post-container"]',
-    '.Post',
-    'shreddit-post',
-    'div.feed-shared-update-v2',
-    'div.feed-shared-inline-show-more-text',
-    'ytd-comment-thread-renderer',
-    'article',
-    '[role="article"]'
-  ];
-
-  const DEBUG_PDS = true;
-  function pdsLog(...args) {
-    if (!DEBUG_PDS) return;
-    try { console.log('FakeNewsFilter:PDS', ...args); } catch (_) {}
-  }
-
-  const MAX_INITIAL_CANDIDATES = 500;
-  const MIN_TEXT_LENGTH = 60;
-  const PROCESS_PER_IDLE = 2;
-
-  const scheduleIdle = window.requestIdleCallback || function (cb, opts) {
-    return setTimeout(() => cb({ didTimeout: true, timeRemaining: () => 0 }), Math.min((opts && opts.timeout) || 300, 500));
-  };
-  const cancelIdle = window.cancelIdleCallback || clearTimeout;
-
-  class PostDiscoveryService {
-    constructor() {
-      this.running = false;
-      this.intersectionObserver = null;
-      this.mutationObserver = null;
-      this.observedElements = new WeakSet();
-      this.enqueuedElements = new WeakSet();
-      this.processedElements = new WeakSet();
-      this.attemptCounts = new WeakMap();
-      this.elementId = new WeakMap();
-      this.nextId = 1;
-      this.queue = [];
-      this.results = [];
-      this.pendingScanRoots = new Set();
-      this.scanScheduled = false;
-      this.idleHandle = null;
-
-      this.onIntersect = this.onIntersect.bind(this);
-      this.onMutations = this.onMutations.bind(this);
-      this.processQueue = this.processQueue.bind(this);
-      this.onUserClick = this.onUserClick.bind(this);
-    }
-
-    start() {
-      if (this.running) return;
-      this.running = true;
-      try {
-        this.intersectionObserver = new IntersectionObserver(this.onIntersect, {
-          root: null,
-          rootMargin: '0px 0px 200px 0px',
-          threshold: [0.25, 0.5, 0.75]
-        });
-      } catch (_) {
-        this.intersectionObserver = null;
-      }
-      pdsLog('start', { hasIntersectionObserver: !!this.intersectionObserver });
-
-      try {
-        this.mutationObserver = new MutationObserver(this.onMutations);
-        this.mutationObserver.observe(document.body, { childList: true, subtree: true });
-      } catch (_) {}
-
-      pdsLog('initial scan kick-off');
-      this.scanInitialCandidates(document);
-      window.addEventListener('click', this.onUserClick, { capture: true, passive: true });
-    }
-
-    stop() {
-      if (!this.running) return;
-      this.running = false;
-      try { this.intersectionObserver && this.intersectionObserver.disconnect(); } catch (_) {}
-      try { this.mutationObserver && this.mutationObserver.disconnect(); } catch (_) {}
-      window.removeEventListener('click', this.onUserClick, { capture: true });
-      if (this.idleHandle) { try { cancelIdle(this.idleHandle); } catch (_) {} }
-      this.idleHandle = null;
-    }
-
-    getStatus() {
-      return {
-        running: this.running,
-        queueLength: this.queue.length,
-        observedApprox: undefined,
-        discoveredCount: this.results.length
-      };
-    }
-
-    getDiscoveredPosts() {
-      return this.results.slice();
-    }
-
-    ensureId(el) {
-      let id = this.elementId.get(el);
-      if (!id) {
-        id = 'fnf-post-' + (this.nextId++);
-        this.elementId.set(el, id);
-        try { el.dataset.fnfId = id; } catch (_) {}
-      }
-      return id;
-    }
-
-    scanInitialCandidates(root) {
-      try {
-        const selector = CANDIDATE_SELECTORS.join(',');
-        const all = Array.from((root || document).querySelectorAll(selector)).slice(0, MAX_INITIAL_CANDIDATES);
-        for (const el of all) this.observeCandidate(el);
-        pdsLog('scanInitialCandidates', { count: all.length });
-      } catch (_) {}
-    }
-
-    onMutations(mutations) {
-      let added = 0;
-      for (const m of mutations) {
-        m.addedNodes && m.addedNodes.forEach((node) => {
-          if (!node || node.nodeType !== 1) return;
-          this.pendingScanRoots.add(node);
-          added++;
-        });
-      }
-      pdsLog('mutations detected; scheduling scan', { addedApprox: added, pendingRoots: this.pendingScanRoots.size });
-      this.scheduleScan();
-    }
-
-    scheduleScan() {
-      if (this.scanScheduled) return;
-      this.scanScheduled = true;
-      pdsLog('scheduleScan');
-      scheduleIdle(() => {
-        try {
-          const roots = Array.from(this.pendingScanRoots);
-          this.pendingScanRoots.clear();
-          const selector = CANDIDATE_SELECTORS.join(',');
-          let count = 0;
-          for (const root of roots) {
-            try {
-              if (root.matches && root.matches(selector)) this.observeCandidate(root);
-            } catch (_) {}
-            try {
-              const found = root.querySelectorAll ? root.querySelectorAll(selector) : [];
-              for (const el of Array.from(found)) {
-                this.observeCandidate(el);
-                count++;
-                if (count >= MAX_INITIAL_CANDIDATES) break;
-              }
-            } catch (_) {}
-            if (count >= MAX_INITIAL_CANDIDATES) break;
-          }
-          pdsLog('scan flushed', { newCandidates: count });
-        } finally {
-          this.scanScheduled = false;
-        }
-      }, { timeout: 800 });
-    }
-
-    observeCandidate(el) {
-      if (!el || this.observedElements.has(el) || this.processedElements.has(el)) return;
-      this.observedElements.add(el);
-      if (this.intersectionObserver) {
-        try { this.intersectionObserver.observe(el); } catch (_) {}
-      } else {
-        // Fallback: immediately enqueue if visible
-        if (isElementActuallyVisible(el)) this.enqueue(el);
-      }
-      try { pdsLog('observeCandidate', { id: this.ensureId(el), tag: el.tagName }); } catch (_) {}
-    }
-
-    onIntersect(entries) {
-      for (const entry of entries) {
-        if (!entry || !entry.target) continue;
-        const el = entry.target;
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-          try { pdsLog('intersect', { id: this.ensureId(el), ratio: Number(entry.intersectionRatio.toFixed ? entry.intersectionRatio.toFixed(2) : entry.intersectionRatio) }); } catch (_) {}
-          this.enqueue(el);
-        }
-      }
-    }
-
-    enqueue(el) {
-      if (!el || this.enqueuedElements.has(el) || this.processedElements.has(el)) return;
-      this.enqueuedElements.add(el);
-      this.queue.push(el);
-      try { pdsLog('enqueue', { id: this.ensureId(el), queueLength: this.queue.length }); } catch (_) {}
-      this.scheduleProcessing();
-    }
-
-    scheduleProcessing() {
-      if (this.idleHandle) return;
-      pdsLog('scheduleProcessing');
-      this.idleHandle = scheduleIdle(this.processQueue, { timeout: 1000 });
-    }
-
-    processQueue(deadline) {
-      this.idleHandle = null;
-      pdsLog('processQueue start', { queueLength: this.queue.length });
-      let processedThisTurn = 0;
-      try {
-        while (this.queue.length > 0 && (processedThisTurn < PROCESS_PER_IDLE) && (deadline.timeRemaining ? (deadline.timeRemaining() > 8 || deadline.didTimeout) : true)) {
-          const el = this.queue.shift();
-          if (!el) continue;
-          this.enqueuedElements.delete(el);
-          if (this.processedElements.has(el)) continue;
-
-          // Extract text from the container using existing helper
-          let text = '';
-          try { text = extractTextFromKnownContainer(el) || ''; } catch (_) { text = ''; }
-          const attempts = (this.attemptCounts.get(el) || 0) + 1;
-          this.attemptCounts.set(el, attempts);
-
-          if (text && text.replace(/\s+/g, ' ').trim().length >= MIN_TEXT_LENGTH) {
-            const id = this.ensureId(el);
-            const cleaned = text.replace(/\s{2,}/g, ' ').trim();
-            const snippet = cleaned.slice(0, 280) + (cleaned.length > 280 ? '…' : '');
-            this.results.push({ id, text: cleaned, snippet, length: cleaned.length, url: window.location.href, ts: Date.now(), strategy: 'observer' });
-            try { el.classList.add('fnf-processed'); } catch (_) {}
-            this.processedElements.add(el);
-            try { this.intersectionObserver && this.intersectionObserver.unobserve(el); } catch (_) {}
-            pdsLog('processed', { id, length: cleaned.length });
-            processedThisTurn++;
-          } else {
-            // Not enough text; allow one more attempt later when content expands
-            if (attempts >= 2) {
-              // Give up and stop observing to avoid repeated work
-              try { this.intersectionObserver && this.intersectionObserver.unobserve(el); } catch (_) {}
-              this.processedElements.add(el);
-              try { pdsLog('giveup', { id: this.ensureId(el), attempts }); } catch (_) {}
-            } else {
-              try { pdsLog('insufficient text; will retry', { id: this.ensureId(el), attempts }); } catch (_) {}
-            }
-          }
-        }
-      } finally {
-        if (this.queue.length > 0) {
-          this.scheduleProcessing();
-        }
-        pdsLog('processQueue end', { remaining: this.queue.length, processedThisTurn });
-      }
-    }
-
-    onUserClick(e) {
-      try {
-        const target = e.target;
-        if (!target) return;
-        const container = findClosestMatchingAncestor(target, CANDIDATE_SELECTORS) || null;
-        if (container) {
-          try { pdsLog('click enqueue', { id: this.ensureId(container) }); } catch (_) {}
-          this.enqueue(container);
-        }
-      } catch (_) {}
-    }
-  }
-
-  try {
-    const service = new PostDiscoveryService();
-    service.start();
-    window.__fnfPDS = service;
-    pdsLog('service initialized');
-  } catch (e) {
-    // Swallow errors; service is optional
-  }
-})();
+// (removed) PostDiscoveryService — automatic post discovery disabled
 
 // --------------------------------------
 // Persistent floating toolbar (on-page)

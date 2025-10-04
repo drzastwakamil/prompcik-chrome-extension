@@ -23,9 +23,6 @@ A prototype Chrome extension that can read the DOM of any webpage and add absolu
 
 ## Usage
 
-### Automatic Demo
-Security requirement: automatic overlays are disabled by default. You can enable them for development by setting `FNF_DEMO_OVERLAYS_ENABLED = true` in `content.js`.
-
 ### Floating Toolbar (Primary UX)
 - Appears at the top-right of each page (draggable)
 - Click "🛡️ Fact-check" to start selection mode (ESC to cancel)

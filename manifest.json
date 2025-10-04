@@ -8,8 +8,7 @@
     "scripting",
     "contextMenus",
     "storage",
-    "webRequest",
-    "debugger"
+    "webRequest"
   ],
   "host_permissions": [
     "https://your-backend.example.com/*",
