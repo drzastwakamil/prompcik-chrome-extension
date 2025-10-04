@@ -67,16 +67,33 @@ async function callBackendAnalyze({ text, url, source }) {
   }
   const backendUrl = (await chrome.storage?.sync?.get?.('backendUrl'))?.backendUrl || DEFAULT_BACKEND_URL;
   const body = { text };
+  
+  console.log('Calling backend:', backendUrl);
+  console.log('Request body:', body);
+  
   const response = await fetch(backendUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  
+  console.log('Response status:', response.status);
+  console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+  
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
+    console.error('Backend error response:', {
+      status: response.status,
+      statusText: response.statusText,
+      errorText,
+      url: backendUrl
+    });
     throw new Error(`Backend error ${response.status}: ${errorText || response.statusText}`);
   }
-  return await response.json();
+  
+  const result = await response.json();
+  console.log('Backend response:', result);
+  return result;
 }
 
 chrome.runtime.onInstalled.addListener(() => {

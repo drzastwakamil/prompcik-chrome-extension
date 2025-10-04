@@ -371,11 +371,15 @@ async function onFcClick(e) {
 
     // Call background for analysis
     try {
+      console.log('Sending fact-check request to background...');
       const response = await chrome.runtime.sendMessage({ action: 'analyzeText', text, url: window.location.href, source: 'selection-click' });
+      console.log('Fact-check response from background:', response);
+      
       try { loading.remove(); } catch (_) {}
       if (response && response.success) {
         // Show result attached to the element
         const result = response.result || {};
+        console.log('Backend result:', result);
         const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
         
         // Check if content is flagged as fake news
@@ -395,9 +399,11 @@ async function onFcClick(e) {
         `;
         attachOverlayToElement(container, html, { backgroundColor });
       } else {
+        console.error('Fact-check failed:', response);
         attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
       }
     } catch (err) {
+      console.error('Fact-check exception:', err);
       try { loading.remove(); } catch (_) {}
       attachOverlayToElement(container, `❌ Fact-check error: ${String(err?.message || err)}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
     }
