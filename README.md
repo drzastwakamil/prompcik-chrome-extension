@@ -10,6 +10,7 @@ A prototype Chrome extension that can read the DOM of any webpage and add absolu
 - 💬 **Interactive Popup**: Control panel to trigger different actions
 - 🐱 **API Integration**: Fetches data from external APIs (The Cat API & Cat Facts) and displays it in the DOM
 - 🛡️ **On-demand Fact-check**: Start a selection mode, hover to highlight, click an element to fact-check its text; shows a loading overlay and a mocked result
+ - 🧰 **Floating Toolbar**: A small draggable toolbar appears on every page with a Fact-check button
 
 ## Installation
 
@@ -25,14 +26,13 @@ A prototype Chrome extension that can read the DOM of any webpage and add absolu
 ### Automatic Demo
 Security requirement: automatic overlays are disabled by default. You can enable them for development by setting `FNF_DEMO_OVERLAYS_ENABLED = true` in `content.js`.
 
-### Extension Popup
-Click the extension icon in the toolbar to open the control panel:
+### Floating Toolbar (Primary UX)
+- Appears at the top-right of each page (draggable)
+- Click "🛡️ Fact-check" to start selection mode (ESC to cancel)
+- Results appear as overlays near the clicked element
 
-1. **Read DOM Info**: Extracts and displays DOM statistics in the popup
-2. **Add Custom Overlay**: Creates a new overlay with random color at a random position
-3. **Show DOM Stats**: Creates a green overlay on the page showing DOM statistics
-4. **🛡️ Fact-check (select element)**: Enters selection mode (crosshair cursor). Hover to see a green highlight around elements, click an element to trigger fact-check. Press ESC to cancel.
-5. **🐱 Fetch Random Cat**: Fetches a random cat image and fact from external APIs and displays them on the page
+### Extension Popup (Info-only)
+- Shows basic info; all actions are available directly via the on-page toolbar
 
 ### Fact-check Flow (On-demand)
 1. Click the popup button "🛡️ Fact-check (select element)"
@@ -99,6 +99,7 @@ The manifest references icon files (`icon16.png`, `icon48.png`, `icon128.png`) w
 3. **Overlay Creation**: Creates absolutely positioned `div` elements with high z-index (999999)
 4. **Message Passing**: Uses Chrome's messaging API to communicate between popup and content script
 5. **Selection Mode**: The content script draws a non-interactive highlight box around the hovered element and anchors overlays near the clicked element
+6. **Floating Toolbar**: Injected by the content script on page load; draggable handle and close option
 5. **Draggable Logic**: Implements mouse event handlers to allow dragging overlays
 
 ## Customization

@@ -1005,3 +1005,85 @@ if (FNF_DEMO_OVERLAYS_ENABLED) {
   }
 })();
 
+// --------------------------------------
+// Persistent floating toolbar (on-page)
+// --------------------------------------
+(function initFloatingToolbar() {
+  try { if (window.__fnfToolbarInit) return; window.__fnfToolbarInit = true; } catch (_) {}
+  try {
+    // Avoid injecting on restricted contexts without body
+    if (!document || !document.body) return;
+    createToolbarOverlay();
+  } catch (_) {}
+})();
+
+function createToolbarOverlay() {
+  if (document.getElementById('fnf-toolbar')) return;
+  const toolbar = document.createElement('div');
+  toolbar.id = 'fnf-toolbar';
+  toolbar.style.position = 'fixed';
+  toolbar.style.top = '20px';
+  toolbar.style.right = '20px';
+  toolbar.style.zIndex = '999999';
+  toolbar.style.display = 'flex';
+  toolbar.style.gap = '8px';
+  toolbar.style.alignItems = 'center';
+  toolbar.style.background = 'rgba(17, 24, 39, 0.85)';
+  toolbar.style.color = '#fff';
+  toolbar.style.padding = '8px 10px';
+  toolbar.style.borderRadius = '10px';
+  toolbar.style.boxShadow = '0 6px 16px rgba(0,0,0,0.25)';
+  toolbar.style.backdropFilter = 'saturate(120%) blur(4px)';
+  toolbar.style.userSelect = 'none';
+
+  const title = document.createElement('div');
+  title.textContent = 'Tools';
+  title.style.fontSize = '12px';
+  title.style.opacity = '0.9';
+
+  const factBtn = document.createElement('button');
+  factBtn.title = 'Start Fact-check (select element)';
+  factBtn.textContent = '🛡️ Fact-check';
+  factBtn.style.background = '#2563eb';
+  factBtn.style.color = '#fff';
+  factBtn.style.border = 'none';
+  factBtn.style.borderRadius = '8px';
+  factBtn.style.padding = '6px 8px';
+  factBtn.style.fontSize = '12px';
+  factBtn.style.cursor = 'pointer';
+
+  factBtn.addEventListener('click', () => {
+    startFactCheckSelectionMode();
+  });
+
+  const handle = document.createElement('div');
+  handle.textContent = '⠿';
+  handle.title = 'Drag';
+  handle.style.cursor = 'move';
+  handle.style.opacity = '0.9';
+  handle.style.fontSize = '14px';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.title = 'Hide toolbar';
+  closeBtn.textContent = '×';
+  closeBtn.style.background = 'transparent';
+  closeBtn.style.color = '#fff';
+  closeBtn.style.border = 'none';
+  closeBtn.style.fontSize = '16px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.lineHeight = '1';
+
+  closeBtn.addEventListener('click', () => {
+    try { toolbar.remove(); } catch (_) {}
+  });
+
+  toolbar.appendChild(handle);
+  toolbar.appendChild(title);
+  toolbar.appendChild(factBtn);
+  toolbar.appendChild(closeBtn);
+  document.body.appendChild(toolbar);
+
+  // Make draggable using existing helper
+  makeDraggable(toolbar);
+}
+
