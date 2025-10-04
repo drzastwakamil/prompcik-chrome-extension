@@ -1,5 +1,7 @@
 // Content script - runs on every webpage
 console.log('DOM Reader & Overlay Extension loaded');
+// Feature flag: disable backend analysis requests while developing extraction
+const FNF_BACKEND_ANALYSIS_ENABLED = false;
 
 // Function to read DOM information
 function readDOM() {
@@ -186,6 +188,7 @@ function getVisibleTextFromElement(root) {
 function getUserSelectionText() {
   const sel = window.getSelection && window.getSelection();
   if (!sel || sel.rangeCount === 0) return '';
+  console.log('sel ', sel)
   const text = sel.toString().replace(/\s+/g, ' ').trim();
   return text;
 }
@@ -295,6 +298,11 @@ async function analyzeCurrentVisiblePost() {
       await chrome.runtime.sendMessage({ action: 'debugExtraction', meta: { reason: 'NO_TEXT', url: location.href } });
     } catch (_) {}
     return { success: false, error: 'NO_TEXT' };
+  }
+  if (!FNF_BACKEND_ANALYSIS_ENABLED) {
+    // Development mode: do not call backend. Show a preview overlay only.
+    showAnalysisOverlay({ label: 'Text captured', summary: 'Backend disabled — preview only.' }, text);
+    return { success: true, previewOnly: true };
   }
   try {
     const response = await chrome.runtime.sendMessage({

@@ -52,11 +52,21 @@ try {
 // - Provides context menu to analyze selected text
 
 const DEFAULT_BACKEND_URL = 'https://your-backend.example.com/api/analyze';
+const FNF_BACKEND_ANALYSIS_ENABLED = false; // Disable backend until available
 
 // Chrome Debugger protocol version
 const DEBUG_PROTOCOL_VERSION = '1.3';
 
 async function callBackendAnalyze({ text, url, source }) {
+  if (!FNF_BACKEND_ANALYSIS_ENABLED) {
+    // Stubbed response for development
+    return {
+      label: 'Preview only',
+      summary: 'Backend disabled — returning stub.',
+      confidence: 0.0,
+      source
+    };
+  }
   const backendUrl = (await chrome.storage?.sync?.get?.('backendUrl'))?.backendUrl || DEFAULT_BACKEND_URL;
   const body = { text, pageUrl: url, source };
   const response = await fetch(backendUrl, {
