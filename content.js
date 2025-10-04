@@ -346,8 +346,8 @@ function createHighlightBox() {
 
 function updateHighlightBoxForElement(el) {
   if (!__fcSelection.highlightBox) return;
-  // Don't highlight extension UI elements
-  if (!el || isExtensionElement(el)) {
+  // Don't highlight extension UI elements, images, or SVG elements
+  if (!el || isExtensionElement(el) || el.tagName === 'IMG' || el.tagName === 'image' || el.tagName === 'svg' || el.tagName === 'SVG' || el instanceof SVGElement) {
     __fcSelection.highlightBox.style.width = '0px';
     __fcSelection.highlightBox.style.height = '0px';
     return;
@@ -445,6 +445,12 @@ async function onFcClick(e) {
     return;
   }
   
+  // Don't fact-check images or SVG elements
+  if (e.target.tagName === 'IMG' || e.target.tagName === 'image' || e.target.tagName === 'svg' || e.target.tagName === 'SVG' || e.target instanceof SVGElement) {
+    console.log('Clicked on image/SVG - ignoring');
+    return;
+  }
+  
   e.preventDefault();
   e.stopPropagation();
   const target = e.target;
@@ -478,6 +484,39 @@ async function onFcClick(e) {
   } catch (_) {}
   
   const text = (extractTextFromKnownContainer(container) || getVisibleTextFromElement(container) || '').trim();
+  
+  // Check if we have text to fact-check
+  if (!text || text.length === 0) {
+    console.log('No text found in element - cannot fact-check');
+    // Show a brief notification to the user
+    const notification = document.createElement('div');
+    notification.dataset.fnfElement = 'true';
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 9999999;
+      animation: fadeIn 0.3s ease;
+    `;
+    notification.textContent = '⚠️ Cannot fact-check: No text found in element';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+    
+    return;
+  }
   
   // Log the fact-checked HTML element and extracted text that will be sent to backend
   console.log('Fact-checking clicked element:', target);
