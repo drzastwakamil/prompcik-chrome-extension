@@ -265,6 +265,15 @@ let __fcSelection = {
   hoverEl: null,
 };
 
+// ------------------------------
+// Text selection fact-check
+// ------------------------------
+let __textSelection = {
+  button: null,
+  lastSelection: null,
+  timeoutId: null,
+};
+
 function startFactCheckSelectionMode() {
   try { stopFactCheckSelectionMode(); } catch (_) {}
   __fcSelection.active = true;
@@ -384,20 +393,46 @@ async function onFcClick(e) {
         
         // Check if content is flagged as fake news
         const isFakeNews = result.flagged === true;
-        const label = isFakeNews ? '⚠️ Fake News Detected' : '✓ Content Verified';
+        const percentage = result.percentage || 0;
+        const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
         const summary = isFakeNews 
-          ? 'This content has been flagged as potentially misleading or false information.' 
-          : 'This content appears to be legitimate.';
-        const backgroundColor = isFakeNews ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)';
+          ? `This content has been flagged as fake news (${percentage}% confidence).` 
+          : 'This content is not in our fact-checking database.';
+        const backgroundColor = isFakeNews ? 'rgba(220, 38, 38, 0.95)' : 'rgba(107, 114, 128, 0.95)';
         
         const html = `
           <div>
-            <strong>${label}</strong><br>
-            <div style=\"margin-top:6px; font-size:12px; line-height:1.4;\">${summary}</div>
-            <div style=\"margin-top:8px; font-size:11px; opacity:0.85;\">Snippet: ${preview}</div>
+            <strong style="font-size:15px;">${label}</strong><br>
+            <div style=\"margin-top:6px; font-size:13px; line-height:1.4;\">${summary}</div>
+            <div style=\"margin-top:12px; font-size:11px; opacity:0.85; font-style:italic; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px;\">\"${preview}\"</div>
+            <button class="fnf-element-learn-more-btn" style="
+              margin-top:12px;
+              background:rgba(255,255,255,0.2);
+              border:1px solid rgba(255,255,255,0.3);
+              color:#fff;
+              padding:8px 16px;
+              border-radius:6px;
+              font-size:12px;
+              font-weight:600;
+              cursor:pointer;
+              width:100%;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+              Learn More →
+            </button>
           </div>
         `;
-        attachOverlayToElement(container, html, { backgroundColor });
+        const overlay = attachOverlayToElement(container, html, { backgroundColor });
+        
+        // Add Learn More button functionality
+        const learnMoreBtn = overlay.querySelector('.fnf-element-learn-more-btn');
+        if (learnMoreBtn) {
+          learnMoreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            overlay.remove();
+            showFactCheckSidePanel(result, text);
+          });
+        }
       } else {
         console.error('Fact-check failed:', response);
         attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
@@ -449,6 +484,494 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
     try { document.body.appendChild(overlay); } catch (_) {}
   }
   return overlay;
+}
+
+// ------------------------------
+// Text selection fact-check functions
+// ------------------------------
+function createTextSelectionButton() {
+  const button = document.createElement('button');
+  button.id = 'fnf-text-selection-button';
+  button.innerHTML = '🛡️ Fact-check';
+  button.style.position = 'fixed';
+  button.style.zIndex = '999999';
+  button.style.background = '#2563eb';
+  button.style.color = '#fff';
+  button.style.border = 'none';
+  button.style.borderRadius = '8px';
+  button.style.padding = '8px 12px';
+  button.style.fontSize = '13px';
+  button.style.fontFamily = 'Arial, sans-serif';
+  button.style.cursor = 'pointer';
+  button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
+  button.style.display = 'none';
+  button.style.pointerEvents = 'auto';
+  button.style.transition = 'opacity 0.2s, transform 0.2s';
+  
+  button.addEventListener('mouseenter', () => {
+    button.style.transform = 'scale(1.05)';
+  });
+  
+  button.addEventListener('mouseleave', () => {
+    button.style.transform = 'scale(1)';
+  });
+  
+  button.addEventListener('click', handleTextSelectionFactCheck);
+  
+  document.body.appendChild(button);
+  return button;
+}
+
+function positionTextSelectionButton(selection) {
+  if (!__textSelection.button || !selection || selection.rangeCount === 0) return;
+  
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  
+  if (rect.width === 0 && rect.height === 0) {
+    hideTextSelectionButton();
+    return;
+  }
+  
+  // Position button at the end of the selection, slightly below
+  const buttonWidth = 120; // approximate button width
+  let left = rect.right - buttonWidth / 2;
+  let top = rect.bottom + 8;
+  
+  // Keep button on screen
+  const margin = 10;
+  if (left < margin) left = margin;
+  if (left + buttonWidth > window.innerWidth - margin) {
+    left = window.innerWidth - buttonWidth - margin;
+  }
+  if (top + 40 > window.innerHeight) {
+    // Show above selection if not enough space below
+    top = rect.top - 40;
+  }
+  
+  __textSelection.button.style.left = left + 'px';
+  __textSelection.button.style.top = top + 'px';
+  __textSelection.button.style.display = 'block';
+}
+
+function hideTextSelectionButton() {
+  if (__textSelection.button) {
+    __textSelection.button.style.display = 'none';
+  }
+}
+
+function handleTextSelection() {
+  // Clear any pending timeout
+  if (__textSelection.timeoutId) {
+    clearTimeout(__textSelection.timeoutId);
+  }
+  
+  // Small delay to allow selection to settle
+  __textSelection.timeoutId = setTimeout(() => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
+    
+    if (!selectedText || selectedText.length < 10) {
+      hideTextSelectionButton();
+      __textSelection.lastSelection = null;
+      return;
+    }
+    
+    // Create button if it doesn't exist
+    if (!__textSelection.button) {
+      __textSelection.button = createTextSelectionButton();
+    }
+    
+    __textSelection.lastSelection = {
+      text: selectedText,
+      selection: selection
+    };
+    
+    positionTextSelectionButton(selection);
+  }, 150);
+}
+
+// Helper function to create an overlay with absolute positioning (scrolls with content)
+function createTextOverlayAbsolute(rect, content, backgroundColor) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fnf-text-result-overlay fnf-text-overlay-absolute';
+  overlay.style.position = 'absolute';
+  
+  // Calculate absolute position relative to document
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  
+  const left = Math.max(10, rect.left + scrollX);
+  const top = rect.bottom + scrollY + 8;
+  
+  overlay.style.left = left + 'px';
+  overlay.style.top = top + 'px';
+  overlay.style.backgroundColor = backgroundColor;
+  overlay.style.color = '#ffffff';
+  overlay.style.padding = '12px 16px';
+  overlay.style.borderRadius = '10px';
+  overlay.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+  overlay.style.zIndex = '999999';
+  overlay.style.fontFamily = 'Arial, sans-serif';
+  overlay.style.fontSize = '13px';
+  overlay.style.maxWidth = '400px';
+  overlay.style.minWidth = '250px';
+  overlay.style.pointerEvents = 'auto';
+  overlay.innerHTML = content;
+  
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+// Perform the actual fact check and display results
+async function performTextFactCheck(text, rect, loadingOverlay) {
+  try {
+    console.log('Sending fact-check request to background...');
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'analyzeText', 
+      text, 
+      url: window.location.href, 
+      source: 'text-selection' 
+    });
+    console.log('Fact-check response from background:', response);
+    
+    loadingOverlay.remove();
+    
+    if (response && response.success) {
+      const result = response.result || {};
+      console.log('Backend result:', result);
+      const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
+      
+      const isFakeNews = result.flagged === true;
+      const percentage = result.percentage || 0;
+      
+      // Different messaging based on fake news status
+      const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
+      const summary = isFakeNews 
+        ? `This content has been flagged as fake news (${percentage}% confidence).` 
+        : 'This content is not in our fact-checking database.';
+      const backgroundColor = isFakeNews ? 'rgba(220, 38, 38, 0.95)' : 'rgba(107, 114, 128, 0.95)';
+      
+      const resultContent = `
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <div style="flex:1;">
+            <strong style="font-size:15px;">${label}</strong><br>
+            <div style="margin-top:6px; font-size:13px; line-height:1.4;">${summary}</div>
+            <div style="margin-top:12px; font-size:11px; opacity:0.85; font-style:italic; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px;">"${preview}"</div>
+            <button class="fnf-learn-more-btn" style="
+              margin-top:12px;
+              background:rgba(255,255,255,0.2);
+              border:1px solid rgba(255,255,255,0.3);
+              color:#fff;
+              padding:8px 16px;
+              border-radius:6px;
+              font-size:12px;
+              font-weight:600;
+              cursor:pointer;
+              width:100%;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+              Learn More →
+            </button>
+          </div>
+          <button class="close-overlay" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; line-height:1; flex-shrink:0;">×</button>
+        </div>
+      `;
+      
+      const resultOverlay = createTextOverlayAbsolute(rect, resultContent, backgroundColor);
+      
+      const closeBtn = resultOverlay.querySelector('.close-overlay');
+      closeBtn.addEventListener('click', () => {
+        resultOverlay.remove();
+      });
+      
+      const learnMoreBtn = resultOverlay.querySelector('.fnf-learn-more-btn');
+      learnMoreBtn.addEventListener('click', () => {
+        resultOverlay.remove();
+        showFactCheckSidePanel(result, text);
+      });
+      
+    } else {
+      console.error('Fact-check failed:', response);
+      const errorContent = `❌ Fact-check failed: ${response?.error || 'Unknown error'}`;
+      const errorOverlay = createTextOverlayAbsolute(rect, errorContent, 'rgba(239, 68, 68, 0.95)');
+      
+      setTimeout(() => {
+        errorOverlay.remove();
+      }, 5000);
+    }
+  } catch (err) {
+    console.error('Fact-check exception:', err);
+    loadingOverlay.remove();
+    
+    const errorContent = `❌ Fact-check error: ${String(err?.message || err)}`;
+    const errorOverlay = createTextOverlayAbsolute(rect, errorContent, 'rgba(239, 68, 68, 0.95)');
+    
+    setTimeout(() => {
+      errorOverlay.remove();
+    }, 5000);
+  }
+  
+  // Clear the text selection
+  const selection = window.getSelection();
+  if (selection && selection.removeAllRanges) {
+    selection.removeAllRanges();
+  }
+  __textSelection.lastSelection = null;
+}
+
+// Show side panel with full fact-check details
+function showFactCheckSidePanel(result, text) {
+  // Remove any existing panel
+  const existingBackdrop = document.getElementById('fnf-fact-check-backdrop');
+  const existingPanel = document.getElementById('fnf-fact-check-panel');
+  if (existingBackdrop) existingBackdrop.remove();
+  if (existingPanel) existingPanel.remove();
+  
+  const isFakeNews = result.flagged === true;
+  const percentage = result.percentage || 0;
+  const preview = text.slice(0, 200) + (text.length > 200 ? '…' : '');
+  
+  // Create backdrop
+  const backdrop = document.createElement('div');
+  backdrop.id = 'fnf-fact-check-backdrop';
+  backdrop.className = 'fnf-fact-check-panel-backdrop';
+  backdrop.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999999;
+    animation: fnfFadeIn 0.3s ease;
+  `;
+  backdrop.addEventListener('click', () => hideFactCheckSidePanel());
+  
+  // Create side panel
+  const panel = document.createElement('div');
+  panel.id = 'fnf-fact-check-panel';
+  panel.className = `fnf-fact-check-panel ${isFakeNews ? 'fnf-fake-news' : 'fnf-not-in-db'}`;
+  panel.style.cssText = `
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    max-width: 90vw;
+    background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.2);
+    z-index: 9999999;
+    animation: fnfSlideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    border-left: 8px solid ${isFakeNews ? '#dc2626' : '#6b7280'};
+  `;
+  
+  if (isFakeNews) {
+    panel.innerHTML = `
+      <div class="fnf-panel-header" style="padding:24px; border-bottom:1px solid #e5e7eb; background:linear-gradient(to bottom, #fef2f2, white);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; background:#dc2626; color:white;">
+              <span>⚠️</span>
+              <span>Fake News</span>
+            </div>
+            <h2 style="font-size:24px; font-weight:800; color:#111827; margin:0 0 8px 0;">Alert!</h2>
+            <p style="font-size:14px; color:#6b7280; margin:0;">Flagged by our system</p>
+          </div>
+          <button class="fnf-close-panel-btn" style="background:#f3f4f6; border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; color:#6b7280;">×</button>
+        </div>
+      </div>
+      
+      <div class="fnf-panel-body" style="flex:1; overflow-y:auto; padding:24px;">
+        <div style="text-align:center; margin-bottom:32px;">
+          <div style="width:160px; height:160px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:56px; font-weight:800; border:12px solid #dc2626; background:white; color:#dc2626; box-shadow:0 0 0 8px #fef2f2;">
+            ${percentage}%
+          </div>
+          <div style="font-size:14px; color:#6b7280; font-weight:500;">Confidence Level</div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>🔍</span>
+            <span>What This Means</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#fef2f2; border-radius:8px; border-left:4px solid #dc2626;">
+            This content has been flagged as fake news by our system. We strongly recommend not sharing or believing this information without verification from reliable sources.
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>📝</span>
+            <span>Analyzed Content</span>
+          </h3>
+          <div style="font-size:13px; line-height:1.6; color:#4b5563; padding:16px; background:#fef2f2; border-radius:8px; border-left:4px solid #dc2626; font-style:italic;">
+            "${preview}"
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>💡</span>
+            <span>Recommendation</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#fef2f2; border-radius:8px; border-left:4px solid #dc2626;">
+            Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.
+          </div>
+        </div>
+      </div>
+
+      <div class="fnf-panel-footer" style="padding:24px; border-top:1px solid #e5e7eb; display:flex; gap:12px;">
+        <button class="fnf-panel-btn-primary" style="flex:1; padding:12px 24px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; background:#dc2626; color:white;">Understood</button>
+        <button class="fnf-panel-btn-secondary" style="flex:1; padding:12px 24px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; background:#f3f4f6; color:#374151;">Dismiss</button>
+      </div>
+    `;
+  } else {
+    panel.innerHTML = `
+      <div class="fnf-panel-header" style="padding:24px; border-bottom:1px solid #e5e7eb; background:linear-gradient(to bottom, #f9fafb, white);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; background:#6b7280; color:white;">
+              <span>ℹ️</span>
+              <span>Not Verified</span>
+            </div>
+            <h2 style="font-size:24px; font-weight:800; color:#111827; margin:0 0 8px 0;">Unknown Status</h2>
+            <p style="font-size:14px; color:#6b7280; margin:0;">Not in our database</p>
+          </div>
+          <button class="fnf-close-panel-btn" style="background:#f3f4f6; border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; color:#6b7280;">×</button>
+        </div>
+      </div>
+      
+      <div class="fnf-panel-body" style="flex:1; overflow-y:auto; padding:24px;">
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>📋</span>
+            <span>Database Status</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#f9fafb; border-radius:8px; border-left:4px solid #6b7280;">
+            This content is not currently in our fact-checking database. This doesn't mean it's true or false - we simply don't have information about it.
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>📝</span>
+            <span>Analyzed Content</span>
+          </h3>
+          <div style="font-size:13px; line-height:1.6; color:#4b5563; padding:16px; background:#f9fafb; border-radius:8px; border-left:4px solid #6b7280; font-style:italic;">
+            "${preview}"
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>💡</span>
+            <span>What You Can Do</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#f9fafb; border-radius:8px; border-left:4px solid #6b7280;">
+            Consider verifying this information through multiple trusted sources. Stay critical of what you read online and check the credibility of the source.
+          </div>
+        </div>
+      </div>
+
+      <div class="fnf-panel-footer" style="padding:24px; border-top:1px solid #e5e7eb; display:flex; gap:12px;">
+        <button class="fnf-panel-btn-primary" style="flex:1; padding:12px 24px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; background:#6b7280; color:white;">Got It</button>
+        <button class="fnf-panel-btn-secondary" style="flex:1; padding:12px 24px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; background:#f3f4f6; color:#374151;">Dismiss</button>
+      </div>
+    `;
+  }
+  
+  // Append to body
+  document.body.appendChild(backdrop);
+  document.body.appendChild(panel);
+  
+  // Add event listeners
+  const closeBtn = panel.querySelector('.fnf-close-panel-btn');
+  const primaryBtn = panel.querySelector('.fnf-panel-btn-primary');
+  const secondaryBtn = panel.querySelector('.fnf-panel-btn-secondary');
+  
+  closeBtn.addEventListener('click', hideFactCheckSidePanel);
+  primaryBtn.addEventListener('click', hideFactCheckSidePanel);
+  secondaryBtn.addEventListener('click', hideFactCheckSidePanel);
+  
+  // Add hover effects
+  [primaryBtn, secondaryBtn].forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      btn.style.transform = 'translateY(-1px)';
+      btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transform = 'translateY(0)';
+      btn.style.boxShadow = 'none';
+    });
+  });
+}
+
+function hideFactCheckSidePanel() {
+  const backdrop = document.getElementById('fnf-fact-check-backdrop');
+  const panel = document.getElementById('fnf-fact-check-panel');
+  if (backdrop) backdrop.remove();
+  if (panel) panel.remove();
+}
+
+async function handleTextSelectionFactCheck(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!__textSelection.lastSelection) return;
+  
+  const text = __textSelection.lastSelection.text;
+  const selection = __textSelection.lastSelection.selection;
+  
+  console.log('Fact-checking selected text:', text);
+  
+  // Hide the button immediately
+  hideTextSelectionButton();
+  
+  // Get the selection range and its bounding rect
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  
+  // Create loading overlay with absolute positioning
+  const loadingOverlay = createTextOverlayAbsolute(rect, '🔄 Fact checking...', 'rgba(30, 64, 175, 0.95)');
+  
+  // Perform fact check
+  performTextFactCheck(text, rect, loadingOverlay);
+}
+
+// Initialize text selection listeners
+function initTextSelectionFactCheck() {
+  // Listen for text selection
+  document.addEventListener('mouseup', (e) => {
+    // Don't interfere with clicking our own button
+    if (e.target?.id === 'fnf-text-selection-button') return;
+    
+    // Small delay to ensure selection is complete
+    setTimeout(() => handleTextSelection(), 10);
+  });
+  
+  // Also listen to selection change for keyboard selection
+  document.addEventListener('selectionchange', () => {
+    handleTextSelection();
+  });
+  
+  // Hide button when clicking elsewhere
+  document.addEventListener('mousedown', (e) => {
+    if (e.target?.id === 'fnf-text-selection-button') return;
+    
+    // Check if there's still a selection
+    setTimeout(() => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+      if (!selectedText) {
+        hideTextSelectionButton();
+        __textSelection.lastSelection = null;
+      }
+    }, 10);
+  });
 }
 
 // Function to fetch and display cat data
@@ -632,6 +1155,17 @@ chrome.runtime.onMessage.addListener((request) => {
     // Avoid injecting on restricted contexts without body
     if (!document || !document.body) return;
     createToolbarOverlay();
+  } catch (_) {}
+})();
+
+// --------------------------------------
+// Initialize text selection fact-check
+// --------------------------------------
+(function initTextSelection() {
+  try { if (window.__fnfTextSelectionInit) return; window.__fnfTextSelectionInit = true; } catch (_) {}
+  try {
+    if (!document || !document.body) return;
+    initTextSelectionFactCheck();
   } catch (_) {}
 })();
 

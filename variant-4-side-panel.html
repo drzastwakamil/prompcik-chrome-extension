@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variant 4 - Side Panel Overlay</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* SIDE PANEL OVERLAY - Slides in from right */
+        .fact-check-panel-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fact-check-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 400px;
+            max-width: 90vw;
+            background: white;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.2);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        /* Fake News Panel - Red accent */
+        .fact-check-panel.fake-news {
+            border-left: 8px solid #dc2626;
+        }
+
+        /* Not in Database - Gray accent */
+        .fact-check-panel.not-in-db {
+            border-left: 8px solid #6b7280;
+        }
+
+        .panel-header {
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .fact-check-panel.fake-news .panel-header {
+            background: linear-gradient(to bottom, #fef2f2, white);
+        }
+
+        .fact-check-panel.not-in-db .panel-header {
+            background: linear-gradient(to bottom, #f9fafb, white);
+        }
+
+        .panel-header-content {
+            flex: 1;
+        }
+
+        .panel-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .fact-check-panel.fake-news .panel-badge {
+            background: #dc2626;
+            color: white;
+        }
+
+        .fact-check-panel.not-in-db .panel-badge {
+            background: #6b7280;
+            color: white;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #111827;
+            margin: 0 0 8px 0;
+        }
+
+        .panel-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+        }
+
+        .close-panel-btn {
+            background: #f3f4f6;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            color: #6b7280;
+        }
+
+        .close-panel-btn:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .percentage-display {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .percentage-circle-large {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 56px;
+            font-weight: 800;
+            border: 12px solid;
+            position: relative;
+            background: white;
+        }
+
+        .fact-check-panel.fake-news .percentage-circle-large {
+            border-color: #dc2626;
+            color: #dc2626;
+            box-shadow: 0 0 0 8px #fef2f2;
+        }
+
+        .fact-check-panel.not-in-db .percentage-circle-large {
+            display: none;
+        }
+
+        .percentage-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .info-section {
+            margin-bottom: 24px;
+        }
+
+        .info-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #4b5563;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .fact-check-panel.fake-news .info-section-content {
+            border-left-color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .fact-check-panel.not-in-db .info-section-content {
+            border-left-color: #6b7280;
+        }
+
+        .panel-footer {
+            padding: 24px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+        }
+
+        .panel-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .panel-btn-primary {
+            background: #dc2626;
+            color: white;
+        }
+
+        .panel-btn-primary:hover {
+            background: #b91c1c;
+        }
+
+        .panel-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .panel-btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .fact-check-panel.not-in-db .panel-btn-primary {
+            background: #6b7280;
+        }
+
+        .fact-check-panel.not-in-db .panel-btn-primary:hover {
+            background: #4b5563;
+        }
+
+        /* Demo Controls */
+        .controls {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Sample News Article</h1>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+        <p>This is a sample article that would be fact-checked by the extension.</p>
+
+        <div class="controls">
+            <h3>Demo Controls</h3>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="isFakeNews" checked onchange="updatePanel()">
+                    Is Fake News
+                </label>
+            </div>
+            <div class="control-group">
+                <label>Percentage: <span id="percentageValue">92</span>%</label>
+                <input type="range" id="percentage" min="0" max="100" value="92" oninput="updatePanel()">
+            </div>
+            <button onclick="showPanel()">Show Panel</button>
+        </div>
+    </div>
+
+    <!-- SIDE PANEL OVERLAY -->
+    <div class="fact-check-panel-backdrop hidden" id="panelBackdrop" onclick="hidePanel()"></div>
+    <div class="fact-check-panel fake-news hidden" id="panel">
+        <div class="panel-header">
+            <div class="panel-header-content">
+                <div class="panel-badge">
+                    <span>⚠️</span>
+                    <span>Fake News</span>
+                </div>
+                <h2 class="panel-title">Alert!</h2>
+                <p class="panel-subtitle">Flagged by trusted authorities</p>
+            </div>
+            <button class="close-panel-btn" onclick="hidePanel()">×</button>
+        </div>
+        
+        <div class="panel-body">
+            <div class="percentage-display">
+                <div class="percentage-circle-large">92%</div>
+                <div class="percentage-label">Confidence Level</div>
+            </div>
+
+            <div class="info-section">
+                <h3 class="info-section-title">
+                    <span>🔍</span>
+                    <span>What This Means</span>
+                </h3>
+                <div class="info-section-content">
+                    This content has been flagged as fake news by one or more trusted authorities. We strongly recommend not sharing or believing this information without verification from reliable sources.
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3 class="info-section-title">
+                    <span>💡</span>
+                    <span>Recommendation</span>
+                </h3>
+                <div class="info-section-content">
+                    Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-footer">
+            <button class="panel-btn panel-btn-primary" onclick="hidePanel()">Understood</button>
+            <button class="panel-btn panel-btn-secondary" onclick="hidePanel()">Learn More</button>
+        </div>
+    </div>
+
+    <script>
+        function updatePanel() {
+            const isFakeNews = document.getElementById('isFakeNews').checked;
+            const percentage = document.getElementById('percentage').value;
+            const panel = document.getElementById('panel');
+            
+            document.getElementById('percentageValue').textContent = percentage;
+            
+            if (isFakeNews) {
+                panel.className = 'fact-check-panel fake-news';
+                if (!panel.classList.contains('hidden')) {
+                    panel.innerHTML = `
+                        <div class="panel-header">
+                            <div class="panel-header-content">
+                                <div class="panel-badge">
+                                    <span>⚠️</span>
+                                    <span>Fake News</span>
+                                </div>
+                                <h2 class="panel-title">Alert!</h2>
+                                <p class="panel-subtitle">Flagged by trusted authorities</p>
+                            </div>
+                            <button class="close-panel-btn" onclick="hidePanel()">×</button>
+                        </div>
+                        
+                        <div class="panel-body">
+                            <div class="percentage-display">
+                                <div class="percentage-circle-large">${percentage}%</div>
+                                <div class="percentage-label">Confidence Level</div>
+                            </div>
+
+                            <div class="info-section">
+                                <h3 class="info-section-title">
+                                    <span>🔍</span>
+                                    <span>What This Means</span>
+                                </h3>
+                                <div class="info-section-content">
+                                    This content has been flagged as fake news by one or more trusted authorities. We strongly recommend not sharing or believing this information without verification from reliable sources.
+                                </div>
+                            </div>
+
+                            <div class="info-section">
+                                <h3 class="info-section-title">
+                                    <span>💡</span>
+                                    <span>Recommendation</span>
+                                </h3>
+                                <div class="info-section-content">
+                                    Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-footer">
+                            <button class="panel-btn panel-btn-primary" onclick="hidePanel()">Understood</button>
+                            <button class="panel-btn panel-btn-secondary" onclick="hidePanel()">Learn More</button>
+                        </div>
+                    `;
+                }
+            } else {
+                panel.className = 'fact-check-panel not-in-db';
+                if (!panel.classList.contains('hidden')) {
+                    panel.innerHTML = `
+                        <div class="panel-header">
+                            <div class="panel-header-content">
+                                <div class="panel-badge">
+                                    <span>ℹ️</span>
+                                    <span>Not Verified</span>
+                                </div>
+                                <h2 class="panel-title">Unknown Status</h2>
+                                <p class="panel-subtitle">Not in our database</p>
+                            </div>
+                            <button class="close-panel-btn" onclick="hidePanel()">×</button>
+                        </div>
+                        
+                        <div class="panel-body">
+                            <div class="info-section">
+                                <h3 class="info-section-title">
+                                    <span>📋</span>
+                                    <span>Database Status</span>
+                                </h3>
+                                <div class="info-section-content">
+                                    This content is not currently in our fact-checking database. This doesn't mean it's true or false - we simply don't have information about it.
+                                </div>
+                            </div>
+
+                            <div class="info-section">
+                                <h3 class="info-section-title">
+                                    <span>💡</span>
+                                    <span>What You Can Do</span>
+                                </h3>
+                                <div class="info-section-content">
+                                    Consider verifying this information through multiple trusted sources. Stay critical of what you read online and check the credibility of the source.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-footer">
+                            <button class="panel-btn panel-btn-primary" onclick="hidePanel()">Got It</button>
+                            <button class="panel-btn panel-btn-secondary" onclick="hidePanel()">Report</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function showPanel() {
+            updatePanel();
+            document.getElementById('panelBackdrop').classList.remove('hidden');
+            document.getElementById('panel').classList.remove('hidden');
+        }
+
+        function hidePanel() {
+            document.getElementById('panelBackdrop').classList.add('hidden');
+            document.getElementById('panel').classList.add('hidden');
+        }
+
+        // Show panel on page load for demo
+        setTimeout(showPanel, 500);
+    </script>
+</body>
+</html>
+

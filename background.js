@@ -51,7 +51,7 @@ try {
 // - Handles API calls to the backend
 // - Provides context menu to analyze selected text
 
-const DEFAULT_BACKEND_URL = 'https://next-prompcik.vercel.app/app/evaluate';
+const DEFAULT_BACKEND_URL = 'https://next-prompcik.vercel.app/api/evaluate';
 const FNF_BACKEND_ANALYSIS_ENABLED = true; // Backend is now available
 
 
