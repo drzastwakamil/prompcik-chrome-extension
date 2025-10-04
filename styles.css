@@ -75,6 +75,20 @@
   }
 }
 
+/* Bubble content transitions - smooth state changes */
+.fnf-bubble-content-wrapper {
+  transition: opacity 0.2s ease;
+}
+
+.fnf-attached-overlay {
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Persistent highlight with smooth transitions */
+.fnf-fc-persistent-highlight {
+  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease !important;
+}
+
 /* Side panel animations */
 @keyframes fnfFadeIn {
   from {

@@ -151,13 +151,6 @@ function getVisibleTextFromElement(root) {
   return parts.join(' ').replace(/\s{2,}/g, ' ').trim();
 }
 
-function getUserSelectionText() {
-  const sel = window.getSelection && window.getSelection();
-  if (!sel || sel.rangeCount === 0) return '';
-  console.log('sel ', sel)
-  const text = sel.toString().replace(/\s+/g, ' ').trim();
-  return text;
-}
 
 // (removed) getLargestVisibleArticleCandidate — auto post detection removed
 
@@ -286,14 +279,6 @@ let __fcSelection = {
   scrollTimeout: null,
 };
 
-// ------------------------------
-// Text selection fact-check
-// ------------------------------
-let __textSelection = {
-  button: null,
-  lastSelection: null,
-  timeoutId: null,
-};
 
 function startFactCheckSelectionMode() {
   try { stopFactCheckSelectionMode(); } catch (_) {}
@@ -331,6 +316,14 @@ function removePersistentHighlight() {
     try { __fcSelection.persistentHighlight.remove(); } catch (_) {}
   }
   __fcSelection.persistentHighlight = null;
+}
+
+function updatePersistentHighlightColor(color, borderWidth = '3px') {
+  if (__fcSelection.persistentHighlight) {
+    __fcSelection.persistentHighlight.style.borderColor = color;
+    __fcSelection.persistentHighlight.style.borderWidth = borderWidth;
+    __fcSelection.persistentHighlight.style.boxShadow = `0 0 0 4px ${color}20`;
+  }
 }
 
 function createHighlightBox() {
@@ -404,7 +397,7 @@ function onFcKeyDown(e) {
   }
 }
 
-function createPersistentHighlight(element) {
+function createPersistentHighlight(element, color = '#3b82f6') {
   // Remove any existing persistent highlight
   removePersistentHighlight();
   
@@ -414,11 +407,11 @@ function createPersistentHighlight(element) {
   box.style.position = 'absolute';
   box.style.zIndex = '999997';
   box.style.pointerEvents = 'none';
-  box.style.border = '3px solid #22c55e';
+  box.style.border = `3px solid ${color}`;
   box.style.borderRadius = '8px';
-  box.style.background = 'rgba(34, 197, 94, 0.12)';
-  box.style.boxShadow = '0 0 0 4px rgba(34, 197, 94, 0.1)';
-  box.style.transition = 'opacity 0.3s';
+  box.style.background = `${color}15`;
+  box.style.boxShadow = `0 0 0 4px ${color}20`;
+  box.style.transition = 'border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease';
   
   // Position relative to element
   const updatePosition = () => {
@@ -492,13 +485,25 @@ async function onFcClick(e) {
   console.log('Extracted text (sent to backend):', text);
   console.log('Container HTML:', container.outerHTML);
 
-  // Create persistent highlight for the element being fact-checked
-  createPersistentHighlight(container);
+  // Create persistent highlight for the element being fact-checked (blue for loading state)
+  createPersistentHighlight(container, '#3b82f6');
   
-  // Show loading overlay attached to the clicked element (absolute relative to element)
+  // Create bubble and start in loading state
   try {
-    const loadingHtml = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span style="font-weight:600;">Fact checking…</span></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>`;
-    const loading = attachOverlayToElement(container, loadingHtml, { backgroundColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' });
+    const bubble = createBubble(container);
+    if (!bubble) {
+      console.error('Failed to create bubble');
+      removePersistentHighlight();
+      return;
+    }
+    
+    // Set initial loading state
+    bubble.setState_Loading('Fact checking…');
+    
+    // Setup close button to also remove persistent highlight
+    bubble.onClose(() => {
+      removePersistentHighlight();
+    });
 
     // Call background for analysis
     try {
@@ -506,93 +511,41 @@ async function onFcClick(e) {
       const response = await chrome.runtime.sendMessage({ action: 'analyzeText', text, url: window.location.href, source: 'selection-click' });
       console.log('Fact-check response from background:', response);
       
-      try { loading.remove(); } catch (_) {}
-      // Remove persistent highlight after loading
-      removePersistentHighlight();
+      // Check if the request was cancelled while waiting for response
+      if (bubble.isCancelled()) {
+        console.log('Fact-check was cancelled by user');
+        return;
+      }
       
       if (response && response.success) {
-        // Show result attached to the element
+        // Transition to result state (updates the same bubble)
         const result = response.result || {};
         console.log('Backend result:', result);
-        const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
         
-        // Check if content is flagged as fake news
+        // Update highlight color based on result
         const isFakeNews = result.flagged === true;
-        const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
-        const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
-        const summary = isFakeNews 
-          ? `This content has been flagged as fake news (${percentage}% similarity).` 
-          : 'This content is not in our fact-checking database.';
-        const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
-        const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
+        const highlightColor = isFakeNews ? '#dc2626' : '#6b7280'; // Red for fake, gray for not found
+        updatePersistentHighlightColor(highlightColor);
         
-        const html = `
-          <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:16px;">
-            <div data-fnf-element="true" style="
-              min-width:48px;
-              width:48px;
-              height:48px;
-              border-radius:12px;
-              background:${iconBg};
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              font-size:26px;
-              flex-shrink:0;
-            ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
-            <div data-fnf-element="true" style="flex:1; min-width:0;">
-              <strong data-fnf-element="true" style="font-size:17px; font-weight:700; display:block; margin-bottom:10px; line-height:1.2;">${label}</strong>
-              <div data-fnf-element="true" style="font-size:14px; line-height:1.6; margin-bottom:14px; opacity:0.95;">${summary}</div>
-              <div data-fnf-element="true" style="
-                background:rgba(0,0,0,0.15);
-                padding:12px 14px;
-                border-radius:8px;
-                font-size:13px;
-                line-height:1.5;
-                font-style:italic;
-                opacity:0.9;
-                border-left:3px solid rgba(255,255,255,0.3);
-                margin-bottom:14px;
-              ">"${preview}"</div>
-              <button data-fnf-element="true" class="fnf-element-learn-more-btn" style="
-                background:rgba(255,255,255,0.95);
-                border:none;
-                color:${isFakeNews ? '#dc2626' : '#1e40af'};
-                padding:11px 18px;
-                border-radius:10px;
-                font-size:14px;
-                font-weight:700;
-                cursor:pointer;
-                width:100%;
-                transition: all 0.2s;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-              " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 10px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'">
-                Learn More →
-              </button>
-            </div>
-          </div>
-        `;
-        const overlay = attachOverlayToElement(container, html, { backgroundColor, isFakeNews });
-        
-        // Add Learn More button functionality
-        const learnMoreBtn = overlay.querySelector('.fnf-element-learn-more-btn');
-        if (learnMoreBtn) {
-          learnMoreBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            overlay.remove();
-            showFactCheckSidePanel(result, text);
-          });
-        }
+        bubble.setState_Result(result, text);
       } else {
         console.error('Fact-check failed:', response);
-        removePersistentHighlight();
-        attachOverlayToElement(container, `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+        // Keep gray highlight for errors
+        updatePersistentHighlightColor('#6b7280');
+        bubble.setState_Error(`Fact-check failed: ${response?.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Fact-check exception:', err);
-      try { loading.remove(); } catch (_) {}
-      removePersistentHighlight();
-      attachOverlayToElement(container, `❌ Fact-check error: ${String(err?.message || err)}`, { backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+      
+      // Check if the error was due to cancellation
+      if (bubble.isCancelled()) {
+        console.log('Fact-check was cancelled by user');
+        return;
+      }
+      
+      // Keep gray highlight for errors
+      updatePersistentHighlightColor('#6b7280');
+      bubble.setState_Error(`Fact-check error: ${String(err?.message || err)}`);
     }
   } catch (errOuter) {
     console.error('Fact-check selection error', errOuter);
@@ -600,11 +553,22 @@ async function onFcClick(e) {
   }
 }
 
-function attachOverlayToElement(anchorEl, html, options = {}) {
-  if (!anchorEl || !anchorEl.appendChild) return { remove() {} };
+// ------------------------------
+// Bubble Manager - Standardized bubble creation and state management
+// ------------------------------
+function createBubble(anchorElOrRect, options = {}) {
+  // Support both element and rect as anchor
+  let anchorRect;
+  if (anchorElOrRect instanceof Element) {
+    if (!anchorElOrRect.appendChild) return null;
+    anchorRect = anchorElOrRect.getBoundingClientRect();
+  } else if (anchorElOrRect && typeof anchorElOrRect === 'object') {
+    // It's a rect object (from text selection)
+    anchorRect = anchorElOrRect;
+  } else {
+    return null;
+  }
   
-  // Get the bounding rect of the anchor element
-  const anchorRect = anchorEl.getBoundingClientRect();
   const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
   const scrollY = window.pageYOffset || document.documentElement.scrollTop;
   
@@ -619,7 +583,7 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
   // Calculate position: bottom center of the anchor element
   const overlayWidth = 480;
   const tailHeight = 16;
-  const gap = 8;
+  const gap = tailHeight + 16; // Gap = tail height + 16px padding = 32px total
   
   // Position container at bottom center of anchor element
   const centerX = anchorRect.left + scrollX + (anchorRect.width / 2);
@@ -652,384 +616,252 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
   tail.style.height = '0';
   tail.style.borderLeft = tailHeight + 'px solid transparent';
   tail.style.borderRight = tailHeight + 'px solid transparent';
-  
-  // Determine background color for tail
-  let tailBorderColor = '#3b82f6';
-  if (options.backgroundColor) {
-    if (typeof options.backgroundColor === 'string') {
-      // Extract color from gradient if possible, or use as-is
-      if (options.backgroundColor.includes('gradient')) {
-        // Try to extract first color from gradient
-        const match = options.backgroundColor.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\)/);
-        if (match) tailBorderColor = match[0];
-        else if (options.backgroundColor.includes('#dc2626')) tailBorderColor = '#dc2626';
-        else if (options.backgroundColor.includes('#6366f1')) tailBorderColor = '#6366f1';
-      } else {
-        tailBorderColor = options.backgroundColor;
-      }
-    }
-  }
-  
-  tail.style.borderBottom = tailHeight + 'px solid ' + tailBorderColor;
+  tail.style.borderBottom = tailHeight + 'px solid #6366f1';
   tail.style.filter = 'drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.15))';
+  tail.style.transition = 'border-bottom-color 0.3s ease';
   
   // Create the overlay bubble
   const overlay = document.createElement('div');
   overlay.className = 'fnf-attached-overlay';
   overlay.dataset.fnfElement = 'true';
   overlay.style.position = 'relative';
-  overlay.style.background = options.backgroundColor || 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
+  overlay.style.background = 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
   overlay.style.color = '#ffffff';
   overlay.style.padding = '20px 22px';
   overlay.style.borderRadius = '16px';
-  overlay.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
+  overlay.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.25)';
   overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   overlay.style.fontSize = '14px';
   overlay.style.width = '100%';
   overlay.style.boxSizing = 'border-box';
   overlay.style.pointerEvents = 'auto';
   overlay.style.backdropFilter = 'blur(10px)';
-  overlay.innerHTML = `
-    <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:8px;">
-      <div data-fnf-element="true" style="flex:1;">${html}</div>
-      <button data-fnf-element="true" class="close-overlay" style="
-        background:rgba(255,255,255,0.2);
-        border:none;
-        color:#fff;
-        font-size:18px;
-        cursor:pointer;
-        line-height:1;
-        flex-shrink:0;
-        width:26px;
-        height:26px;
-        border-radius:5px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
-    </div>
-  `;
+  overlay.style.transition = 'background 0.3s ease';
   
-  // Assemble: container has tail + overlay
+  // Create content wrapper
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'fnf-bubble-content-wrapper';
+  contentWrapper.dataset.fnfElement = 'true';
+  contentWrapper.style.display = 'flex';
+  contentWrapper.style.alignItems = 'flex-start';
+  contentWrapper.style.gap = '8px';
+  contentWrapper.style.transition = 'opacity 0.2s ease';
+  
+  // Create content container
+  const content = document.createElement('div');
+  content.className = 'fnf-bubble-content';
+  content.dataset.fnfElement = 'true';
+  content.style.flex = '1';
+  
+  // Create close button
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close-overlay';
+  closeBtn.dataset.fnfElement = 'true';
+  closeBtn.innerHTML = '×';
+  closeBtn.style.background = 'rgba(255,255,255,0.2)';
+  closeBtn.style.border = 'none';
+  closeBtn.style.color = '#fff';
+  closeBtn.style.fontSize = '18px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.lineHeight = '1';
+  closeBtn.style.flexShrink = '0';
+  closeBtn.style.width = '26px';
+  closeBtn.style.height = '26px';
+  closeBtn.style.borderRadius = '5px';
+  closeBtn.style.display = 'flex';
+  closeBtn.style.alignItems = 'center';
+  closeBtn.style.justifyContent = 'center';
+  closeBtn.style.transition = 'background 0.2s';
+  
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.background = 'rgba(255,255,255,0.3)';
+  });
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.background = 'rgba(255,255,255,0.2)';
+  });
+  
+  // Assemble the bubble
+  contentWrapper.appendChild(content);
+  contentWrapper.appendChild(closeBtn);
+  overlay.appendChild(contentWrapper);
   container.appendChild(tail);
   container.appendChild(overlay);
   
-  const closeBtn = overlay.querySelector('.close-overlay');
-  try { 
-    closeBtn.addEventListener('click', () => { 
-      try { container.remove(); } catch (_) {} 
-    }); 
-  } catch (_) {}
-  
-  // Append to body instead of anchor element so it can escape container bounds
-  try { 
-    document.body.appendChild(container); 
-  } catch (_) {}
+  // Append to body
+  document.body.appendChild(container);
   
   // Mark all children as extension elements
   markAllChildrenAsExtensionElements(container);
   
-  // Return container for removal
-  return container;
-}
-
-// ------------------------------
-// Text selection fact-check functions
-// ------------------------------
-function createTextSelectionButton() {
-  const button = document.createElement('button');
-  button.id = 'fnf-text-selection-button';
-  button.dataset.fnfElement = 'true';
-  button.innerHTML = '🛡️ Fact-check';
-  button.style.position = 'fixed';
-  button.style.zIndex = '999999';
-  button.style.background = '#2563eb';
-  button.style.color = '#fff';
-  button.style.border = 'none';
-  button.style.borderRadius = '8px';
-  button.style.padding = '8px 12px';
-  button.style.fontSize = '13px';
-  button.style.fontFamily = 'Arial, sans-serif';
-  button.style.cursor = 'pointer';
-  button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
-  button.style.display = 'none';
-  button.style.pointerEvents = 'auto';
-  button.style.transition = 'opacity 0.2s, transform 0.2s';
+  // Cancellation flag
+  let cancelled = false;
   
-  button.addEventListener('mouseenter', () => {
-    button.style.transform = 'scale(1.05)';
-  });
-  
-  button.addEventListener('mouseleave', () => {
-    button.style.transform = 'scale(1)';
-  });
-  
-  button.addEventListener('click', handleTextSelectionFactCheck);
-  
-  document.body.appendChild(button);
-  return button;
-}
-
-function positionTextSelectionButton(selection) {
-  if (!__textSelection.button || !selection || selection.rangeCount === 0) return;
-  
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
-  
-  if (rect.width === 0 && rect.height === 0) {
-    hideTextSelectionButton();
-    return;
-  }
-  
-  // Position button at the end of the selection, slightly below
-  const buttonWidth = 120; // approximate button width
-  let left = rect.right - buttonWidth / 2;
-  let top = rect.bottom + 8;
-  
-  // Keep button on screen
-  const margin = 10;
-  if (left < margin) left = margin;
-  if (left + buttonWidth > window.innerWidth - margin) {
-    left = window.innerWidth - buttonWidth - margin;
-  }
-  if (top + 40 > window.innerHeight) {
-    // Show above selection if not enough space below
-    top = rect.top - 40;
-  }
-  
-  __textSelection.button.style.left = left + 'px';
-  __textSelection.button.style.top = top + 'px';
-  __textSelection.button.style.display = 'block';
-}
-
-function hideTextSelectionButton() {
-  if (__textSelection.button) {
-    __textSelection.button.style.display = 'none';
-  }
-}
-
-function handleTextSelection() {
-  // Clear any pending timeout
-  if (__textSelection.timeoutId) {
-    clearTimeout(__textSelection.timeoutId);
-  }
-  
-  // Small delay to allow selection to settle
-  __textSelection.timeoutId = setTimeout(() => {
-    const selection = window.getSelection();
-    const selectedText = selection?.toString().trim();
-    
-    if (!selectedText || selectedText.length < 10) {
-      hideTextSelectionButton();
-      __textSelection.lastSelection = null;
-      return;
-    }
-    
-    // Check if selection is within extension UI
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-      const element = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
-      
-      if (isExtensionElement(element)) {
-        console.log('Selection is within extension UI - ignoring');
-        hideTextSelectionButton();
-        __textSelection.lastSelection = null;
-        return;
+  // Helper function to extract first color from gradient
+  function extractColorFromGradient(backgroundColor) {
+    let color = '#6366f1';
+    if (backgroundColor && typeof backgroundColor === 'string') {
+      if (backgroundColor.includes('gradient')) {
+        const colorMatch = backgroundColor.match(/(?:deg,\s*|^gradient\([^,]*,\s*)(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\))/);
+        if (colorMatch && colorMatch[1]) {
+          color = colorMatch[1];
+        } else {
+          const anyColorMatch = backgroundColor.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\)/);
+          if (anyColorMatch) color = anyColorMatch[0];
+        }
+      } else {
+        color = backgroundColor;
       }
     }
+    return color;
+  }
+  
+  // Return bubble controller object with methods to update state
+  return {
+    // Update the bubble's content
+    setContent(html) {
+      // Don't update if cancelled
+      if (cancelled) return;
+      content.innerHTML = html;
+      markAllChildrenAsExtensionElements(content);
+    },
     
-    // Create button if it doesn't exist
-    if (!__textSelection.button) {
-      __textSelection.button = createTextSelectionButton();
-    }
+    // Update the bubble's background and tail color
+    setStyle(backgroundColor) {
+      // Don't update if cancelled
+      if (cancelled) return;
+      overlay.style.background = backgroundColor;
+      const tailColor = extractColorFromGradient(backgroundColor);
+      tail.style.borderBottomColor = tailColor;
+    },
     
-    __textSelection.lastSelection = {
-      text: selectedText,
-      selection: selection
-    };
+    // Transition to loading state
+    setState_Loading(message = 'Fact checking…') {
+      const loadingHtml = `
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:20px; height:20px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+          <span style="font-weight:600;">${message}</span>
+        </div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+      `;
+      this.setContent(loadingHtml);
+      this.setStyle('linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)');
+    },
     
-    positionTextSelectionButton(selection);
-  }, 150);
-}
-
-// Helper function to create an overlay with absolute positioning (scrolls with content)
-function createTextOverlayAbsolute(rect, content, backgroundColor) {
-  const overlay = document.createElement('div');
-  overlay.className = 'fnf-text-result-overlay fnf-text-overlay-absolute';
-  overlay.dataset.fnfElement = 'true';
-  overlay.style.position = 'absolute';
-  
-  // Calculate absolute position relative to document
-  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-  
-  const left = Math.max(10, rect.left + scrollX);
-  const top = rect.bottom + scrollY + 8;
-  
-  overlay.style.left = left + 'px';
-  overlay.style.top = top + 'px';
-  overlay.style.backgroundColor = backgroundColor;
-  overlay.style.color = '#ffffff';
-  overlay.style.padding = '24px 26px';
-  overlay.style.borderRadius = '18px';
-  overlay.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
-  overlay.style.zIndex = '999999';
-  overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-  overlay.style.fontSize = '15px';
-  overlay.style.maxWidth = '500px';
-  overlay.style.minWidth = '380px';
-  overlay.style.pointerEvents = 'auto';
-  overlay.style.backdropFilter = 'blur(10px)';
-  overlay.innerHTML = content;
-  
-  document.body.appendChild(overlay);
-  
-  // Mark all children as extension elements
-  markAllChildrenAsExtensionElements(overlay);
-  
-  return overlay;
-}
-
-// Perform the actual fact check and display results
-async function performTextFactCheck(text, rect, loadingOverlay) {
-  try {
-    console.log('Sending fact-check request to background...');
-    const response = await chrome.runtime.sendMessage({ 
-      action: 'analyzeText', 
-      text, 
-      url: window.location.href, 
-      source: 'text-selection' 
-    });
-    console.log('Fact-check response from background:', response);
-    
-    loadingOverlay.remove();
-    
-    if (response && response.success) {
-      const result = response.result || {};
-      console.log('Backend result:', result);
-      const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
+    // Transition to result state (fake news or not in database)
+    setState_Result(result, text) {
+      // Don't update if cancelled
+      if (cancelled) return;
       
       const isFakeNews = result.flagged === true;
       const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
-      
-      // Different messaging based on fake news status
       const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
       const summary = isFakeNews 
         ? `This content has been flagged as fake news (${percentage}% similarity).` 
         : 'This content is not in our fact-checking database.';
-      const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
-      const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
+      const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
+      const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(229, 231, 235, 0.2)';
+      const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
       
-      const resultContent = `
-        <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:18px;">
+      const html = `
+        <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:16px;">
           <div data-fnf-element="true" style="
-            min-width:52px;
-            width:52px;
-            height:52px;
-            border-radius:14px;
+            min-width:48px;
+            width:48px;
+            height:48px;
+            border-radius:12px;
             background:${iconBg};
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:28px;
+            font-size:26px;
             flex-shrink:0;
           ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
           <div data-fnf-element="true" style="flex:1; min-width:0;">
-            <div data-fnf-element="true" style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px;">
-              <strong data-fnf-element="true" style="font-size:19px; font-weight:700; line-height:1.2;">${label}</strong>
-              <button data-fnf-element="true" class="close-overlay" style="
-                background:rgba(255,255,255,0.2);
-                border:none;
-                color:#fff;
-                font-size:22px;
-                cursor:pointer;
-                line-height:1;
-                flex-shrink:0;
-                min-width:32px;
-                width:32px;
-                height:32px;
-                border-radius:8px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                transition: background 0.2s;
-              " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
-            </div>
-            <div data-fnf-element="true" style="font-size:15px; line-height:1.6; margin-bottom:18px; opacity:0.95;">${summary}</div>
+            <strong data-fnf-element="true" style="font-size:17px; font-weight:700; display:block; margin-bottom:10px; line-height:1.2;">${label}</strong>
+            <div data-fnf-element="true" style="font-size:14px; line-height:1.6; margin-bottom:14px; opacity:0.95;">${summary}</div>
             <div data-fnf-element="true" style="
               background:rgba(0,0,0,0.15);
-              padding:14px 16px;
-              border-radius:10px;
-              font-size:14px;
-              line-height:1.6;
+              padding:12px 14px;
+              border-radius:8px;
+              font-size:13px;
+              line-height:1.5;
               font-style:italic;
               opacity:0.9;
               border-left:3px solid rgba(255,255,255,0.3);
-              margin-bottom:18px;
+              margin-bottom:14px;
             ">"${preview}"</div>
-            <button data-fnf-element="true" class="fnf-learn-more-btn" style="
+            <button data-fnf-element="true" class="fnf-element-learn-more-btn" style="
               background:rgba(255,255,255,0.95);
               border:none;
               color:${isFakeNews ? '#dc2626' : '#1e40af'};
-              padding:13px 22px;
-              border-radius:12px;
-              font-size:15px;
+              padding:11px 18px;
+              border-radius:10px;
+              font-size:14px;
               font-weight:700;
               cursor:pointer;
               width:100%;
               transition: all 0.2s;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.15)'">
+              box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 10px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'">
               Learn More →
             </button>
           </div>
         </div>
       `;
       
-      const resultOverlay = createTextOverlayAbsolute(rect, resultContent, isFakeNews ? '#dc2626' : '#3b82f6');
-      resultOverlay.style.background = backgroundColor;
+      this.setContent(html);
+      this.setStyle(backgroundColor);
       
-      const closeBtn = resultOverlay.querySelector('.close-overlay');
+      // Re-attach learn more button listener after content update
+      const learnMoreBtn = content.querySelector('.fnf-element-learn-more-btn');
+      if (learnMoreBtn) {
+        learnMoreBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.remove();
+          showFactCheckSidePanel(result, text);
+        });
+      }
+    },
+    
+    // Transition to error state
+    setState_Error(errorMessage) {
+      // Don't update if cancelled
+      if (cancelled) return;
+      
+      const html = `❌ ${errorMessage}`;
+      this.setContent(html);
+      this.setStyle('linear-gradient(135deg, #ef4444 0%, #dc2626 100%)');
+    },
+    
+    // Remove the bubble
+    remove() {
+      try { 
+        container.remove(); 
+      } catch (_) {}
+    },
+    
+    // Cancel the operation
+    cancel() {
+      cancelled = true;
+      this.remove();
+    },
+    
+    // Check if cancelled
+    isCancelled() {
+      return cancelled;
+    },
+    
+    // Add close button listener
+    onClose(callback) {
       closeBtn.addEventListener('click', () => {
-        resultOverlay.remove();
+        cancelled = true;
+        callback();
+        this.remove();
       });
-      
-      const learnMoreBtn = resultOverlay.querySelector('.fnf-learn-more-btn');
-      learnMoreBtn.addEventListener('click', () => {
-        resultOverlay.remove();
-        showFactCheckSidePanel(result, text);
-      });
-      
-    } else {
-      console.error('Fact-check failed:', response);
-      const errorContent = `❌ Fact-check failed: ${response?.error || 'Unknown error'}`;
-      const errorOverlay = createTextOverlayAbsolute(rect, errorContent, 'rgba(239, 68, 68, 0.95)');
-      
-      setTimeout(() => {
-        errorOverlay.remove();
-      }, 5000);
     }
-  } catch (err) {
-    console.error('Fact-check exception:', err);
-    loadingOverlay.remove();
-    
-    const errorContent = `❌ Fact-check error: ${String(err?.message || err)}`;
-    const errorOverlay = createTextOverlayAbsolute(rect, errorContent, 'rgba(239, 68, 68, 0.95)');
-    
-    setTimeout(() => {
-      errorOverlay.remove();
-    }, 5000);
-  }
-  
-  // Clear the text selection
-  const selection = window.getSelection();
-  if (selection && selection.removeAllRanges) {
-    selection.removeAllRanges();
-  }
-  __textSelection.lastSelection = null;
+  };
 }
+
 
 // Show side panel with full fact-check details
 function showFactCheckSidePanel(result, text) {
@@ -1234,65 +1066,6 @@ function hideFactCheckSidePanel() {
   if (panel) panel.remove();
 }
 
-async function handleTextSelectionFactCheck(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  if (!__textSelection.lastSelection) return;
-  
-  const text = __textSelection.lastSelection.text;
-  const selection = __textSelection.lastSelection.selection;
-  
-  console.log('Fact-checking selected text:', text);
-  
-  // Hide the button immediately
-  hideTextSelectionButton();
-  
-  // Get the selection range and its bounding rect
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
-  
-  // Create loading overlay with absolute positioning
-  const loadingHtml = `<div style="display:flex; align-items:center; gap:12px;"><div style="width:24px; height:24px; border:3px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span style="font-weight:600; font-size:15px;">Fact checking…</span></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>`;
-  const loadingOverlay = createTextOverlayAbsolute(rect, loadingHtml, '#6366f1');
-  loadingOverlay.style.background = 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
-  
-  // Perform fact check
-  performTextFactCheck(text, rect, loadingOverlay);
-}
-
-// Initialize text selection listeners
-function initTextSelectionFactCheck() {
-  // Listen for text selection
-  document.addEventListener('mouseup', (e) => {
-    // Don't interfere with extension UI
-    if (e.target?.id === 'fnf-text-selection-button' || isExtensionElement(e.target)) return;
-    
-    // Small delay to ensure selection is complete
-    setTimeout(() => handleTextSelection(), 10);
-  });
-  
-  // Also listen to selection change for keyboard selection
-  document.addEventListener('selectionchange', () => {
-    handleTextSelection();
-  });
-  
-  // Hide button when clicking elsewhere
-  document.addEventListener('mousedown', (e) => {
-    // Don't interfere with extension UI
-    if (e.target?.id === 'fnf-text-selection-button' || isExtensionElement(e.target)) return;
-    
-    // Check if there's still a selection
-    setTimeout(() => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
-      if (!selectedText) {
-        hideTextSelectionButton();
-        __textSelection.lastSelection = null;
-      }
-    }, 10);
-  });
-}
 
 
 // Listen for messages from popup
@@ -1341,16 +1114,6 @@ chrome.runtime.onMessage.addListener((request) => {
   } catch (_) {}
 })();
 
-// --------------------------------------
-// Initialize text selection fact-check
-// --------------------------------------
-(function initTextSelection() {
-  try { if (window.__fnfTextSelectionInit) return; window.__fnfTextSelectionInit = true; } catch (_) {}
-  try {
-    if (!document || !document.body) return;
-    initTextSelectionFactCheck();
-  } catch (_) {}
-})();
 
 function createToolbarOverlay() {
   if (document.getElementById('fnf-toolbar')) return;
