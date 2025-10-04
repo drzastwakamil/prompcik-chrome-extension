@@ -22,3 +22,10 @@
   opacity: 0.7;
 }
 
+/* Highlight processed post containers without causing layout shift */
+.fnf-processed {
+  box-shadow: 0 0 0 2px #22c55e inset !important;
+  border-radius: 8px !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+

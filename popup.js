@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readDOMBtn = document.getElementById('readDOM');
   const addOverlayBtn = document.getElementById('addOverlay');
   const showInfoBtn = document.getElementById('showInfo');
+  const analyzeVisibleBtn = document.getElementById('analyzeVisible');
   const fetchCatsBtn = document.getElementById('fetchCats');
   const resultDiv = document.getElementById('result');
 
@@ -67,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         action: 'addOverlay',
         config: overlayConfig
       }, (response) => {
+        console.log('deez nuts response', response)
         if (chrome.runtime.lastError) {
           if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
             handleConnectionError();
@@ -109,6 +111,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Analyze visible post button
+  analyzeVisibleBtn.addEventListener('click', async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      showResult('🔎 Analyzing visible post...');
+      chrome.tabs.sendMessage(tab.id, { action: 'analyzeVisiblePost' }, (response) => {
+        if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
+            handleConnectionError();
+          } else {
+            showResult('Error: ' + chrome.runtime.lastError.message, true);
+          }
+          return;
+        }
+        console.log('deez nuts response', response);
+        if (response && response.success) {
+          showResult('⏳ Analysis started — watch the page overlay.');
+        } else if (response && !response.success) {
+          showResult('❌ Error: ' + (response.error || 'Unknown error'), true);
+        }
+      });
+    } catch (error) {
+      showResult('Error: ' + error.message, true);
+    }
+  });
+
   // Fetch cats button
   fetchCatsBtn.addEventListener('click', async () => {
     try {
@@ -116,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       showResult('🔄 Fetching cat data...');
       
-      chrome.tabs.sendMessage(tab.id, { action: 'fetchCats' }, (response) => {
+      chrome.tabs.sendMessage(tab.id, { action: 'fetchCats', fireAndForget: true }, (response) => {
         if (chrome.runtime.lastError) {
           if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
             handleConnectionError();
@@ -127,7 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (response && response.success) {
-          showResult('✅ Cat displayed on page!\n\n🐱 Check the webpage!');
+          // Immediate ACK; actual UI will be injected by the content script when ready
+          showResult('⏳ Cat fetch started... look on the page for the overlay!');
         } else if (response && !response.success) {
           showResult('❌ Error: ' + response.error, true);
         }

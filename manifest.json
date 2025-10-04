@@ -5,8 +5,21 @@
   "description": "A Chrome extension that reads DOM and adds overlay elements",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "storage",
+    "webRequest",
+    "debugger"
   ],
+  "host_permissions": [
+    "https://your-backend.example.com/*",
+    "https://api.thecatapi.com/*",
+    "https://catfact.ninja/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html"
   },
