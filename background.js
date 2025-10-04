@@ -79,7 +79,12 @@ async function callBackendAnalyze({ text, url, source }) {
   return result;
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  // Open welcome page on first install
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: 'https://tarcza-factcheck.vercel.app/' });
+  }
+  
   chrome.contextMenus.create({
     id: 'analyze-selection',
     title: 'Analyze with Fake News Filter',
