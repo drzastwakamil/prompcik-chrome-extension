@@ -50,15 +50,26 @@
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>{{ isFakeNews ? '🔍' : '📋' }}</span>
-            <span>{{ isFakeNews ? 'What This Means' : 'Database Status' }}</span>
+            <span>{{ isURLMode ? 'URL Analysis' : (isFakeNews ? 'What This Means' : 'Database Status') }}</span>
           </h3>
           <div :style="infoContentStyle">
             {{ mainMessage }}
           </div>
         </div>
         
-        <!-- Analysis Reasoning -->
-        <div v-if="reasoning" :style="infoSectionStyle">
+        <!-- Matched URL (only in URL mode) -->
+        <div v-if="isURLMode && matchedURL" :style="infoSectionStyle">
+          <h3 :style="infoTitleStyle">
+            <span>🔗</span>
+            <span>Matched URL</span>
+          </h3>
+          <div :style="{ ...infoContentStyle, fontFamily: 'monospace', fontSize: '13px', wordBreak: 'break-all' }">
+            {{ matchedURL }}
+          </div>
+        </div>
+        
+        <!-- Analysis Reasoning (only in text mode) -->
+        <div v-if="!isURLMode && reasoning" :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>🧠</span>
             <span>Analysis Reasoning</span>
@@ -68,14 +79,14 @@
           </div>
         </div>
         
-        <!-- Analyzed Content -->
+        <!-- Analyzed Content / Current URL -->
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
-            <span>📝</span>
-            <span>Analyzed Content</span>
+            <span>{{ isURLMode ? '🌐' : '📝' }}</span>
+            <span>{{ isURLMode ? 'Current URL' : 'Analyzed Content' }}</span>
           </h3>
-          <div :style="{ ...infoContentStyle, fontStyle: 'italic' }">
-            "{{ contentPreview }}"
+          <div :style="{ ...infoContentStyle, fontStyle: isURLMode ? 'normal' : 'italic', fontFamily: isURLMode ? 'monospace' : 'inherit', fontSize: isURLMode ? '13px' : '14px', wordBreak: isURLMode ? 'break-all' : 'normal' }">
+            {{ isURLMode ? contentPreview : `"${contentPreview}"` }}
           </div>
         </div>
         
@@ -129,6 +140,11 @@ export default {
     text: {
       type: String,
       required: true
+    },
+    mode: {
+      type: String,
+      default: 'text', // 'text' for text analysis, 'url' for URL check
+      validator: (value) => ['text', 'url'].includes(value)
     }
   },
   data() {
@@ -142,14 +158,26 @@ export default {
     console.log('[FactCheckSidePanel] Mounted with props:', {
       visible: this.visible,
       result: this.result,
-      text: this.text
+      text: this.text,
+      mode: this.mode
     });
   },
   computed: {
+    isURLMode() {
+      return this.mode === 'url';
+    },
     isFakeNews() {
+      if (this.isURLMode) {
+        // In URL mode, consider it "flagged" if warning is true
+        return this.result?.warning === true;
+      }
       return this.result?.flagged === true;
     },
     percentage() {
+      if (this.isURLMode) {
+        // For URL mode, use similarity from response
+        return Math.round((this.result?.similarity || 0) * 100);
+      }
       // Use the higher value between similarity and confidence
       const similarity = this.result?.similarity || 0;
       const confidence = this.result?.confidence || 0;
@@ -157,9 +185,16 @@ export default {
       return Math.round(maxScore * 100);
     },
     reasoning() {
+      if (this.isURLMode) {
+        // URL mode doesn't have reasoning, use message instead
+        return this.result?.message || '';
+      }
       return this.result?.reasoning || '';
     },
     contentPreview() {
+      if (this.isURLMode) {
+        return this.text; // In URL mode, text is the URL itself
+      }
       return this.text.length > 200 ? this.text.slice(0, 200) + '…' : this.text;
     },
     panelClass() {
@@ -169,21 +204,47 @@ export default {
       return this.isFakeNews ? '⚠️' : 'ℹ️';
     },
     badgeText() {
+      if (this.isURLMode) {
+        return this.isFakeNews ? 'Suspicious URL' : 'Safe URL';
+      }
       return this.isFakeNews ? 'Fake News' : 'Not Verified';
     },
     title() {
+      if (this.isURLMode) {
+        return this.isFakeNews ? 'Warning: Suspicious URL' : 'URL Checked';
+      }
       return this.isFakeNews ? 'Alert!' : 'Unknown Status';
     },
     subtitle() {
+      if (this.isURLMode) {
+        return this.isFakeNews ? 'Similar to known malicious URL' : 'URL appears safe';
+      }
       return this.isFakeNews ? 'Flagged by our system' : 'Not in our database';
     },
+    matchedURL() {
+      return this.result?.matchedUrl || '';
+    },
     mainMessage() {
+      if (this.isURLMode) {
+        if (this.isFakeNews) {
+          return `This URL has ${this.percentage}% similarity with a known malicious URL in our database. The matched URL is: ${this.matchedURL}. Please exercise caution and verify the source before proceeding.`;
+        }
+        return 'This URL does not match any known malicious URLs in our database. However, always verify the credibility of websites before sharing personal information.';
+      }
+      
       if (this.isFakeNews) {
         return `This content has been flagged as fake news by our system with ${this.percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.`;
       }
       return 'This content is not currently in our fact-checking database. This doesn\'t mean it\'s true or false - we simply don\'t have information about it.';
     },
     recommendation() {
+      if (this.isURLMode) {
+        if (this.isFakeNews) {
+          return 'Do not enter sensitive information on this website. Verify the URL carefully, check for spelling mistakes, and consider using official sources or bookmarks instead.';
+        }
+        return 'Always verify URLs before clicking links or entering personal information. Look for HTTPS, check the domain spelling, and be cautious of shortened URLs.';
+      }
+      
       if (this.isFakeNews) {
         return 'Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.';
       }

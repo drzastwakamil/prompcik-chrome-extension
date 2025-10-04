@@ -1,9 +1,10 @@
 // Content script - Vue.js refactored version
-import { createApp } from 'vue';
+import { createApp, ref } from 'vue';
 import FactCheckBubble from '@/components/FactCheckBubble.vue';
 import FactCheckSidePanel from '@/components/FactCheckSidePanel.vue';
 import FloatingToolbar from '@/components/FloatingToolbar.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
+import HoverHighlight from '@/components/HoverHighlight.vue';
 
 console.log('Fake News Filter Extension loaded (Vue.js version)');
 
@@ -172,42 +173,48 @@ function updatePersistentHighlightColor(color, borderWidth = '3px') {
 // Selection mode state
 let selectionMode = {
   active: false,
-  highlightBox: null,
+  highlightApp: null,
+  highlightContainer: null,
+  targetElRef: null,
   prevCursor: '',
   hoverEl: null,
   scrollTimeout: null,
 };
 
+// Create Vue-based highlight box
 function createHighlightBox() {
-  const box = document.createElement('div');
-  box.className = 'fnf-fc-highlight-box';
-  box.dataset.fnfElement = 'true';
-  box.style.position = 'fixed';
-  box.style.zIndex = '999998';
-  box.style.pointerEvents = 'none';
-  box.style.border = '2px solid #22c55e';
-  box.style.borderRadius = '6px';
-  box.style.background = 'rgba(34, 197, 94, 0.08)';
-  box.style.top = '0px';
-  box.style.left = '0px';
-  box.style.width = '0px';
-  box.style.height = '0px';
-  document.body.appendChild(box);
-  return box;
+  const container = getOrCreateContainer('fnf-hover-highlight-container');
+  
+  // Create a reactive ref to hold the target element
+  const targetElRef = ref(null);
+  
+  // Pass the ref to the component
+  const app = createApp(HoverHighlight, {
+    targetEl: targetElRef,
+    visible: true,
+    color: '#22c55e',
+    borderWidth: 2
+  });
+  
+  app.mount(container);
+  
+  return { app, container, targetElRef };
 }
 
+// Update target element for highlight (Vue component will reactively update position)
 function updateHighlightBoxForElement(el) {
-  if (!selectionMode.highlightBox) return;
-  if (!el || isExtensionElement(el) || el.tagName === 'IMG' || el.tagName === 'image' || el.tagName === 'svg' || el.tagName === 'SVG' || el instanceof SVGElement) {
-    selectionMode.highlightBox.style.width = '0px';
-    selectionMode.highlightBox.style.height = '0px';
+  if (!selectionMode.targetElRef) return;
+  
+  // Check if element should be highlighted
+  if (!el || isExtensionElement(el) || el.tagName === 'IMG' || el.tagName === 'image' || 
+      el.tagName === 'svg' || el.tagName === 'SVG' || el instanceof SVGElement) {
+    // Clear the target element ref
+    selectionMode.targetElRef.value = null;
     return;
   }
-  const rect = el.getBoundingClientRect();
-  selectionMode.highlightBox.style.top = Math.max(0, rect.top - 2) + 'px';
-  selectionMode.highlightBox.style.left = Math.max(0, rect.left - 2) + 'px';
-  selectionMode.highlightBox.style.width = Math.max(0, rect.width + 4) + 'px';
-  selectionMode.highlightBox.style.height = Math.max(0, rect.height + 4) + 'px';
+  
+  // Update the ref - this will trigger VueUse's reactive tracking
+  selectionMode.targetElRef.value = el;
 }
 
 function onMouseMove(e) {
@@ -220,11 +227,8 @@ function onMouseMove(e) {
 function onScroll(e) {
   if (!selectionMode.active) return;
   
-  if (selectionMode.highlightBox) {
-    selectionMode.highlightBox.style.width = '0px';
-    selectionMode.highlightBox.style.height = '0px';
-  }
-  
+  // VueUse's useElementBounding handles scroll automatically
+  // Just update after a brief delay for performance
   if (selectionMode.scrollTimeout) {
     clearTimeout(selectionMode.scrollTimeout);
   }
@@ -233,7 +237,17 @@ function onScroll(e) {
     if (selectionMode.active && selectionMode.hoverEl) {
       updateHighlightBoxForElement(selectionMode.hoverEl);
     }
-  }, 150);
+  }, 100);
+}
+
+function onResize() {
+  if (!selectionMode.active) return;
+  
+  // VueUse's useElementBounding handles window resize automatically
+  // This is just a fallback to ensure immediate update
+  if (selectionMode.hoverEl) {
+    updateHighlightBoxForElement(selectionMode.hoverEl);
+  }
 }
 
 function onKeyDown(e) {
@@ -280,18 +294,8 @@ async function onFactCheckClick(e) {
   e.stopPropagation();
   const target = e.target;
   
-  // Stop selection mode
-  selectionMode.active = false;
-  window.removeEventListener('mousemove', onMouseMove, { capture: true });
-  window.removeEventListener('click', onFactCheckClick, { capture: true });
-  window.removeEventListener('keydown', onKeyDown, { capture: true });
-  window.removeEventListener('scroll', onScroll, { capture: true });
-  try { document.body.style.cursor = selectionMode.prevCursor || ''; } catch (_) {}
-  
-  if (selectionMode.highlightBox && selectionMode.highlightBox.parentNode) {
-    try { selectionMode.highlightBox.remove(); } catch (_) {}
-  }
-  selectionMode.highlightBox = null;
+  // Stop selection mode using the proper function
+  stopFactCheckSelectionMode();
 
   // Extract text from clicked element
   let container = target;
@@ -401,11 +405,18 @@ function startFactCheckSelectionMode() {
   selectionMode.active = true;
   selectionMode.prevCursor = document.body.style.cursor;
   try { document.body.style.cursor = 'crosshair'; } catch (_) {}
-  selectionMode.highlightBox = createHighlightBox();
+  
+  // Create Vue-based highlight box
+  const { app, container, targetElRef } = createHighlightBox();
+  selectionMode.highlightApp = app;
+  selectionMode.highlightContainer = container;
+  selectionMode.targetElRef = targetElRef;
+  
   window.addEventListener('mousemove', onMouseMove, { capture: true, passive: true });
   window.addEventListener('click', onFactCheckClick, { capture: true, once: false });
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  window.addEventListener('resize', onResize, { passive: true });
 }
 
 function stopFactCheckSelectionMode() {
@@ -415,12 +426,30 @@ function stopFactCheckSelectionMode() {
   window.removeEventListener('click', onFactCheckClick, { capture: true });
   window.removeEventListener('keydown', onKeyDown, { capture: true });
   window.removeEventListener('scroll', onScroll, { capture: true });
+  window.removeEventListener('resize', onResize);
   try { document.body.style.cursor = selectionMode.prevCursor || ''; } catch (_) {}
-  if (selectionMode.highlightBox && selectionMode.highlightBox.parentNode) {
-    try { selectionMode.highlightBox.remove(); } catch (_) {}
+  
+  // Clean up Vue highlight box
+  if (selectionMode.highlightApp) {
+    try {
+      selectionMode.highlightApp.unmount();
+    } catch (e) {
+      console.warn('Error unmounting highlight app:', e);
+    }
   }
-  selectionMode.highlightBox = null;
+  if (selectionMode.highlightContainer && selectionMode.highlightContainer.parentNode) {
+    try {
+      selectionMode.highlightContainer.remove();
+    } catch (e) {
+      console.warn('Error removing highlight container:', e);
+    }
+  }
+  
+  selectionMode.highlightApp = null;
+  selectionMode.highlightContainer = null;
+  selectionMode.targetElRef = null;
   selectionMode.hoverEl = null;
+  
   if (selectionMode.scrollTimeout) {
     clearTimeout(selectionMode.scrollTimeout);
     selectionMode.scrollTimeout = null;
@@ -430,8 +459,8 @@ function stopFactCheckSelectionMode() {
 // Side panel management
 let sidePanelApp = null;
 
-function showFactCheckSidePanel(result, text) {
-  console.log('[showFactCheckSidePanel] Called with:', { result, text });
+function showFactCheckSidePanel(result, text, mode = 'text') {
+  console.log('[showFactCheckSidePanel] Called with:', { result, text, mode });
   
   // Remove existing panel
   hideFactCheckSidePanel();
@@ -443,6 +472,7 @@ function showFactCheckSidePanel(result, text) {
     visible: true,
     result,
     text,
+    mode,
     onClose: () => {
       hideFactCheckSidePanel();
     }
@@ -462,6 +492,87 @@ function hideFactCheckSidePanel() {
       container.remove();
     }
   }
+}
+
+// URL monitoring for automatic checks
+let currentCheckedURL = '';
+let urlCheckTimeout = null;
+
+async function checkCurrentURL() {
+  const url = window.location.href;
+  
+  // Don't check the same URL twice
+  if (url === currentCheckedURL) {
+    return;
+  }
+  
+  console.log('[URL Monitor] Checking URL:', url);
+  currentCheckedURL = url;
+  
+  try {
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'checkURL', 
+      url 
+    });
+    
+    console.log('[URL Monitor] Response:', response);
+    
+    if (response && response.success && response.result) {
+      const result = response.result;
+      
+      // Show sidebar if warning is true (URL has high similarity)
+      if (result.warning === true) {
+        console.log('[URL Monitor] Warning detected, showing sidebar');
+        showFactCheckSidePanel(result, url, 'url');
+      } else {
+        console.log('[URL Monitor] No warning, URL is safe');
+      }
+    }
+  } catch (error) {
+    console.error('[URL Monitor] Error checking URL:', error);
+  }
+}
+
+function startURLMonitoring() {
+  // Check on initial load
+  setTimeout(() => checkCurrentURL(), 1000);
+  
+  // Monitor URL changes (for SPAs)
+  let lastURL = window.location.href;
+  
+  const urlObserver = new MutationObserver(() => {
+    const currentURL = window.location.href;
+    if (currentURL !== lastURL) {
+      lastURL = currentURL;
+      
+      // Debounce URL checks
+      if (urlCheckTimeout) {
+        clearTimeout(urlCheckTimeout);
+      }
+      
+      urlCheckTimeout = setTimeout(() => {
+        checkCurrentURL();
+      }, 500);
+    }
+  });
+  
+  // Observe changes in the document (for SPA navigation)
+  urlObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  // Also listen to popstate for back/forward navigation
+  window.addEventListener('popstate', () => {
+    if (urlCheckTimeout) {
+      clearTimeout(urlCheckTimeout);
+    }
+    urlCheckTimeout = setTimeout(() => {
+      checkCurrentURL();
+    }, 500);
+  });
+  
+  console.log('[URL Monitor] Started monitoring');
 }
 
 // Initialize floating toolbar
@@ -495,7 +606,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initFloatingToolbar);
+  document.addEventListener('DOMContentLoaded', () => {
+    initFloatingToolbar();
+    startURLMonitoring();
+  });
 } else {
   initFloatingToolbar();
+  startURLMonitoring();
 }

@@ -10,17 +10,22 @@
     <div 
       class="handle"
       @mousedown="startDrag"
-      title="Drag"
+      title="Drag to move"
     >
-      ⠿
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+        <circle cx="3" cy="3" r="1.5"/>
+        <circle cx="9" cy="3" r="1.5"/>
+        <circle cx="3" cy="9" r="1.5"/>
+        <circle cx="9" cy="9" r="1.5"/>
+      </svg>
     </div>
-    <div class="title">Tools</div>
     <button 
       class="fact-btn"
       @click="onFactCheck"
-      title="Start Fact-check (select element)"
+      title="Select element to fact-check"
     >
-      🛡️ Fact-check
+      <span class="icon">🛡️</span>
+      <span class="text">Fact-check</span>
     </button>
     <button 
       class="close-btn"
@@ -53,17 +58,7 @@ export default {
         top: `${this.position.top}px`,
         right: this.position.right !== null ? `${this.position.right}px` : 'auto',
         left: this.position.left !== null ? `${this.position.left}px` : 'auto',
-        zIndex: '999999',
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-        background: 'rgba(17, 24, 39, 0.85)',
-        color: '#fff',
-        padding: '8px 10px',
-        borderRadius: '10px',
-        boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
-        backdropFilter: 'saturate(120%) blur(4px)',
-        userSelect: 'none'
+        zIndex: '999999'
       };
     }
   },
@@ -114,47 +109,108 @@ export default {
 <style scoped>
 .fnf-toolbar {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(30, 41, 59, 0.95));
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px) saturate(120%);
+  user-select: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.fnf-toolbar:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: move;
-  opacity: 0.9;
-  font-size: 14px;
+  opacity: 0.6;
+  padding: 4px;
+  border-radius: 6px;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
 }
 
-.title {
-  font-size: 12px;
-  opacity: 0.9;
+.handle:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.handle svg {
+  display: block;
+  opacity: 0.8;
 }
 
 .fact-btn {
-  background: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  min-width: 110px;
+  justify-content: center;
 }
 
 .fact-btn:hover {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.fact-btn:active {
+  transform: translateY(0);
+}
+
+.fact-btn .icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.fact-btn .text {
+  line-height: 1;
 }
 
 .close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   color: #fff;
   border: none;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
   line-height: 1;
-  padding: 0;
-  width: 20px;
-  height: 20px;
+  padding: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
-  opacity: 0.7;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
 }
 </style>

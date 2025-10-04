@@ -3,8 +3,40 @@
 // - Provides context menu to analyze selected text
 
 const DEFAULT_BACKEND_URL = 'https://tarcza-factcheck.vercel.app/api/evaluate';
+const CHECK_URL_ENDPOINT = 'https://tarcza-factcheck.vercel.app/api/checkURL';
 const FNF_BACKEND_ANALYSIS_ENABLED = true; // Backend is now available
 
+
+async function callBackendCheckURL(url) {
+  try {
+    console.log('Checking URL:', url);
+    
+    const response = await fetch(CHECK_URL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    
+    console.log('URL check response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('URL check error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
+      throw new Error(`URL check error ${response.status}: ${errorText || response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('URL check response:', result);
+    return result;
+  } catch (error) {
+    console.error('URL check exception:', error);
+    throw error;
+  }
+}
 
 async function callBackendAnalyze({ text, url, source }) {
   if (!FNF_BACKEND_ANALYSIS_ENABLED) {
@@ -83,6 +115,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true; // keep channel open
   }
+  
+  if (message?.action === 'checkURL') {
+    (async () => {
+      try {
+        const result = await callBackendCheckURL(message.url);
+        sendResponse({ success: true, result });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true; // keep channel open
+  }
+  
   return false;
 });
 
