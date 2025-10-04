@@ -1,25 +1,8 @@
 // Content script - runs on every webpage
-console.log('DOM Reader & Overlay Extension loaded');
+console.log('Fake News Filter Extension loaded');
 // Feature flags
 // - Backend analysis is now enabled
 const FNF_BACKEND_ANALYSIS_ENABLED = true;
-// (removed) demo overlays & auto discovery flags
-
-// Function to read DOM information
-function readDOM() {
-  const domInfo = {
-    title: document.title,
-    url: window.location.href,
-    paragraphs: document.querySelectorAll('p').length,
-    images: document.querySelectorAll('img').length,
-    links: document.querySelectorAll('a').length,
-    headings: document.querySelectorAll('h1, h2, h3, h4, h5, h6').length,
-    forms: document.querySelectorAll('form').length,
-  };
-  
-  console.log('DOM Analysis:', domInfo);
-  return domInfo;
-}
 
 // Function to create and add an overlay element
 function addOverlayElement(config = {}) {
@@ -120,30 +103,6 @@ function makeDraggable(element) {
   }
 }
 
-// Function to add a DOM info overlay
-function showDOMInfo() {
-  const domInfo = readDOM();
-  const infoText = `
-    <div>
-      <strong>DOM Info</strong><br>
-      <div style="margin-top: 8px; font-size: 12px;">
-        📄 Title: ${domInfo.title.substring(0, 30)}${domInfo.title.length > 30 ? '...' : ''}<br>
-        📝 Paragraphs: ${domInfo.paragraphs}<br>
-        🖼️ Images: ${domInfo.images}<br>
-        🔗 Links: ${domInfo.links}<br>
-        📋 Headings: ${domInfo.headings}<br>
-        📋 Forms: ${domInfo.forms}
-      </div>
-    </div>
-  `;
-  
-  addOverlayElement({
-    text: infoText,
-    top: '20px',
-    right: '20px',
-    backgroundColor: 'rgba(16, 185, 129, 0.95)'
-  });
-}
 
 // --- Post extraction and analysis helpers ---
 function isElementActuallyVisible(el) {
@@ -974,124 +933,11 @@ function initTextSelectionFactCheck() {
   });
 }
 
-// Function to fetch and display cat data
-async function fetchAndDisplayCats() {
-  try {
-    // Show loading overlay
-    const loadingOverlay = addOverlayElement({
-      text: '🔄 Fetching cats...',
-      top: '100px',
-      right: '20px',
-      backgroundColor: 'rgba(234, 179, 8, 0.95)'
-    });
-
-    // Delegate cross-origin fetch to background service worker
-    const bgResponse = await chrome.runtime.sendMessage({ action: 'bgFetchCats' });
-    
-    // Remove loading overlay
-    loadingOverlay.remove();
-    
-    // Create cat display overlay
-    const catOverlay = document.createElement('div');
-    catOverlay.className = 'extension-overlay cat-overlay';
-    catOverlay.style.position = 'fixed';
-    catOverlay.style.top = '100px';
-    catOverlay.style.right = '20px';
-    catOverlay.style.backgroundColor = 'rgba(139, 92, 246, 0.98)';
-    catOverlay.style.color = '#ffffff';
-    catOverlay.style.padding = '20px';
-    catOverlay.style.borderRadius = '12px';
-    catOverlay.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
-    catOverlay.style.zIndex = '999999';
-    catOverlay.style.fontFamily = 'Arial, sans-serif';
-    catOverlay.style.maxWidth = '350px';
-    catOverlay.style.cursor = 'move';
-    
-    if (!bgResponse?.success) {
-      throw new Error(bgResponse?.error || 'Unknown background fetch error');
-    }
-    const catUrl = bgResponse.data?.image;
-    const factText = bgResponse.data?.fact;
-
-    catOverlay.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 15px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <h3 style="margin: 0; font-size: 18px;">🐱 Random Cat</h3>
-          <button class="close-overlay" style="
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 0;
-            width: 24px;
-            height: 24px;
-          ">×</button>
-        </div>
-        <img src="${catUrl}" alt="Random cat" style="
-          width: 100%;
-          border-radius: 8px;
-          max-height: 300px;
-          object-fit: cover;
-        ">
-        <div style="
-          background: rgba(255, 255, 255, 0.15);
-          padding: 12px;
-          border-radius: 8px;
-          font-size: 13px;
-          line-height: 1.5;
-        ">
-          <strong>💡 Cat Fact:</strong><br>
-          ${factText}
-        </div>
-        <div style="
-          font-size: 11px;
-          opacity: 0.8;
-          text-align: center;
-        ">
-          Data from thecatapi.com & catfact.ninja
-        </div>
-      </div>
-    `;
-    
-    // Add close functionality
-    const closeBtn = catOverlay.querySelector('.close-overlay');
-    closeBtn.addEventListener('click', () => {
-      catOverlay.remove();
-    });
-    
-    // Make it draggable
-    makeDraggable(catOverlay);
-    
-    // Add to page
-    document.body.appendChild(catOverlay);
-    
-    return { success: true, data: { image: catUrl, fact: factText } };
-    
-  } catch (error) {
-    console.error('Error fetching cat data:', error);
-    addOverlayElement({
-      text: `❌ Error fetching cats: ${error.message}`,
-      top: '100px',
-      right: '20px',
-      backgroundColor: 'rgba(239, 68, 68, 0.95)'
-    });
-    return { success: false, error: error.message };
-  }
-}
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'readDOM') {
-    const domInfo = readDOM();
-    sendResponse({ success: true, data: domInfo });
-    return false; // Synchronous response
-  } else if (request.action === 'addOverlay') {
+  if (request.action === 'addOverlay') {
     addOverlayElement(request.config);
-    sendResponse({ success: true });
-    return false; // Synchronous response
-  } else if (request.action === 'showDOMInfo') {
-    showDOMInfo();
     sendResponse({ success: true });
     return false; // Synchronous response
   } else if (request.action === 'startFactCheckSelection') {
@@ -1102,30 +948,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: false, error: error.message });
     }
     return false;
-  } else if (request.action === 'fetchCats') {
-    // Support a fire-and-forget mode to avoid keeping the message channel open
-    if (request.fireAndForget) {
-      try {
-        // Kick off the async work but ACK immediately
-        fetchAndDisplayCats();
-        sendResponse({ success: true, started: true });
-      } catch (error) {
-        // If anything synchronous goes wrong (unlikely), report it
-        sendResponse({ success: false, error: error.message });
-      }
-      return false; // Synchronous ACK; do not keep channel open
-    }
-
-    // Default behavior: perform async work and respond when done
-    (async () => {
-      try {
-        const result = await fetchAndDisplayCats();
-        sendResponse(result);
-      } catch (error) {
-        sendResponse({ success: false, error: error.message });
-      }
-    })();
-    return true; // Keep channel open for async response
   }
   return false; // Default: synchronous
 });

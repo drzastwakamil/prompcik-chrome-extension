@@ -1,19 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "DOM Reader & Overlay",
+  "name": "Fake News Filter",
   "version": "1.0.0",
-  "description": "A Chrome extension that reads DOM and adds overlay elements",
+  "description": "Fact-check content on any webpage to identify potentially misleading information",
   "permissions": [
     "activeTab",
     "scripting",
     "contextMenus",
-    "storage",
-    "webRequest"
+    "storage"
   ],
   "host_permissions": [
-    "https://your-backend.example.com/*",
-    "https://api.thecatapi.com/*",
-    "https://catfact.ninja/*"
+    "https://your-backend.example.com/*"
   ],
   "background": {
     "service_worker": "background.js",

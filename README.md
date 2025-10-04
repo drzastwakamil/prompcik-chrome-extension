@@ -1,16 +1,15 @@
-# DOM Reader & Overlay Chrome Extension
+# Fake News Filter Chrome Extension
 
-A prototype Chrome extension that can read the DOM of any webpage and add absolutely positioned overlay elements.
+A Chrome extension that helps users identify and fact-check potentially misleading content on webpages. Select or click on any text to verify its authenticity against a fact-checking database.
 
 ## Features
 
-- 📖 **Read DOM**: Analyzes the current page and extracts information (title, paragraphs, images, links, headings, forms)
-- 🎨 **Add Overlays**: Injects custom absolutely positioned elements on top of the webpage
-- 🔄 **Draggable**: All overlays are draggable so you can reposition them
-- 💬 **Interactive Popup**: Control panel to trigger different actions
-- 🐱 **API Integration**: Fetches data from external APIs (The Cat API & Cat Facts) and displays it in the DOM
-- 🛡️ **On-demand Fact-check**: Start a selection mode, hover to highlight, click an element to fact-check its text; shows a loading overlay and a mocked result
- - 🧰 **Floating Toolbar**: A small draggable toolbar appears on every page with a Fact-check button
+- 🛡️ **Fact-check Content**: Start a selection mode, hover to highlight, click an element to fact-check its text
+- ✍️ **Text Selection Fact-check**: Select any text on a page to see a fact-check button
+- 📋 **Context Menu**: Right-click selected text to analyze it with the Fake News Filter
+- 🧰 **Floating Toolbar**: A small draggable toolbar appears on every page with quick access to fact-checking
+- 🎨 **Visual Overlays**: Results are displayed in beautiful, draggable overlays with detailed information
+- 📊 **Detailed Side Panel**: Click "Learn More" to see comprehensive fact-check analysis
 
 ## Installation
 
@@ -43,31 +42,15 @@ Notes:
 - Loading overlay uses the exact text `Fact checking…` without spinner or branding
 - Mocked backend responses are returned unless you enable a real backend
 
-### Programmatic Usage
+### How It Works
 
-The content script exposes these message handlers:
+The extension provides multiple ways to fact-check content:
 
-```javascript
-// Read DOM
-chrome.tabs.sendMessage(tabId, { action: 'readDOM' }, (response) => {
-  console.log(response.data); // DOM info object
-});
+1. **Element Selection Mode**: Click the Fact-check button in the floating toolbar, then hover and click any element on the page
+2. **Text Selection**: Simply select any text on the page and click the Fact-check button that appears
+3. **Context Menu**: Right-click on selected text and choose "Analyze with Fake News Filter"
 
-// Add custom overlay
-chrome.tabs.sendMessage(tabId, { 
-  action: 'addOverlay',
-  config: {
-    text: 'Your text',
-    top: '20px',
-    right: '20px',
-    backgroundColor: 'rgba(59, 130, 246, 0.95)',
-    color: '#ffffff'
-  }
-});
-
-// Show DOM info overlay
-chrome.tabs.sendMessage(tabId, { action: 'showDOMInfo' });
-```
+All methods send the content to the backend API for analysis and display results with confidence scores.
 
 ## File Structure
 
@@ -89,25 +72,22 @@ The manifest references icon files (`icon16.png`, `icon48.png`, `icon128.png`) w
 2. Name them `icon16.png`, `icon48.png`, and `icon128.png`
 3. Place them in the root of the extension folder
 
-## How It Works
+## Technical Details
 
-1. **Content Script**: `content.js` is injected into every webpage and has access to the page's DOM
-2. **DOM Reading**: The script queries the DOM for various elements and counts them
-3. **Overlay Creation**: Creates absolutely positioned `div` elements with high z-index (999999)
-4. **Message Passing**: Uses Chrome's messaging API to communicate between popup and content script
-5. **Selection Mode**: The content script draws a non-interactive highlight box around the hovered element and anchors overlays near the clicked element
-6. **Floating Toolbar**: Injected by the content script on page load; draggable handle and close option
-5. **Draggable Logic**: Implements mouse event handlers to allow dragging overlays
+1. **Content Script**: `content.js` is injected into every webpage and provides fact-checking functionality
+2. **Background Service Worker**: Handles API calls to the backend fact-checking service
+3. **Text Extraction**: Smart extraction of visible text from various social media platforms (Twitter, Facebook, Reddit, LinkedIn, YouTube)
+4. **Overlay System**: Creates absolutely positioned overlays with high z-index (999999) for results
+5. **Selection Mode**: Draws a highlight box around hovered elements and extracts their text content
+6. **Context Menu Integration**: Right-click menu option for quick fact-checking
+7. **Draggable UI**: All overlays and toolbars can be dragged and repositioned
 
-## Customization
+## Configuration
 
-You can easily customize the overlays by modifying the `addOverlayElement` function in `content.js`:
-
-- Change default colors
-- Modify positioning
-- Add more interactive features
-- Change styling and animations
- - Overlays can be positioned via `top`/`right` or `top`/`left` (added for element anchoring)
+You can configure the backend URL:
+1. The extension stores the backend URL in Chrome's sync storage
+2. Default URL: `https://next-prompcik.vercel.app/api/evaluate`
+3. The backend analyzes text and returns fact-check results with confidence scores
 
 ## Troubleshooting
 
@@ -127,9 +107,11 @@ Chrome extensions have restrictions on:
 
 Try it on regular websites like Google, GitHub, or any news site.
 
-### Fact-check selection mode tips
-- If nothing happens after clicking an element, try clicking a text-rich area (the extension prioritizes visible text extraction)
+### Fact-check Tips
+- For best results, select or click elements with substantial text content
 - Press ESC to exit selection mode without clicking
+- Text selections must be at least 10 characters to trigger the fact-check button
+- The extension works best on social media posts, news articles, and comment sections
 
 ## Browser Compatibility
 
@@ -140,5 +122,5 @@ This extension uses Manifest V3 and is compatible with:
 
 ## License
 
-This is a prototype for demonstration purposes.
+MIT License - Free to use and modify.
 

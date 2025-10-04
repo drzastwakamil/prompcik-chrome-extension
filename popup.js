@@ -8,6 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resultDiv.className = 'show';
   }
 
-  show('Prototype v1.0 — Use the floating toolbar on the page.');
+  show('Extension active — Use the floating toolbar or select text to fact-check content.');
 });
 
