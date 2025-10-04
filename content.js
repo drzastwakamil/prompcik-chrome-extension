@@ -20,6 +20,7 @@ function addOverlayElement(config = {}) {
   const overlay = document.createElement('div');
   overlay.id = id;
   overlay.className = 'extension-overlay';
+  overlay.dataset.fnfElement = 'true';
   
   // Apply styles
   overlay.style.position = 'fixed';
@@ -42,9 +43,9 @@ function addOverlayElement(config = {}) {
   
   // Add content
   overlay.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-      <span>${text}</span>
-      <button class="close-overlay" style="
+    <div data-fnf-element="true" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span data-fnf-element="true">${text}</span>
+      <button data-fnf-element="true" class="close-overlay" style="
         background: transparent;
         border: none;
         color: white;
@@ -68,6 +69,9 @@ function addOverlayElement(config = {}) {
   
   // Add to page
   document.body.appendChild(overlay);
+  
+  // Mark all children as extension elements
+  markAllChildrenAsExtensionElements(overlay);
   
   return overlay;
 }
@@ -215,6 +219,62 @@ function showAnalysisOverlay(result, analyzedText) {
 }
 
 // ------------------------------
+// Helper function to mark all descendants as extension elements
+// ------------------------------
+function markAllChildrenAsExtensionElements(rootElement) {
+  if (!rootElement) return;
+  
+  // Mark the root if it doesn't have the attribute
+  if (!rootElement.dataset.fnfElement) {
+    rootElement.dataset.fnfElement = 'true';
+  }
+  
+  // Mark all descendants
+  const allElements = rootElement.querySelectorAll('*');
+  allElements.forEach(el => {
+    el.dataset.fnfElement = 'true';
+  });
+}
+
+// ------------------------------
+// Helper function to check if element is part of extension UI
+// ------------------------------
+function isExtensionElement(el) {
+  if (!el) return false;
+  
+  // Check the element itself and all ancestors
+  let current = el;
+  while (current && current !== document.body && current !== document.documentElement) {
+    // Check by class name
+    if (current.className && typeof current.className === 'string') {
+      if (current.className.includes('extension-overlay') ||
+          current.className.includes('fnf-') ||
+          current.className.includes('fact-check-panel')) {
+        return true;
+      }
+    }
+    
+    // Check by ID
+    if (current.id && typeof current.id === 'string') {
+      if (current.id.includes('fnf-') || 
+          current.id.includes('extension-overlay') ||
+          current.id === 'fnf-toolbar') {
+        return true;
+      }
+    }
+    
+    // Check by data attribute
+    if (current.dataset && current.dataset.fnfElement) {
+      return true;
+    }
+    
+    current = current.parentElement;
+  }
+  
+  return false;
+}
+
+// ------------------------------
 // Fact-check selection mode
 // ------------------------------
 let __fcSelection = {
@@ -261,6 +321,7 @@ function stopFactCheckSelectionMode() {
 function createHighlightBox() {
   const box = document.createElement('div');
   box.className = 'fnf-fc-highlight-box';
+  box.dataset.fnfElement = 'true';
   box.style.position = 'fixed';
   box.style.zIndex = '999998';
   box.style.pointerEvents = 'none';
@@ -277,7 +338,8 @@ function createHighlightBox() {
 
 function updateHighlightBoxForElement(el) {
   if (!__fcSelection.highlightBox) return;
-  if (!el || el.classList?.contains('extension-overlay')) {
+  // Don't highlight extension UI elements
+  if (!el || isExtensionElement(el)) {
     __fcSelection.highlightBox.style.width = '0px';
     __fcSelection.highlightBox.style.height = '0px';
     return;
@@ -306,6 +368,13 @@ function onFcKeyDown(e) {
 
 async function onFcClick(e) {
   if (!__fcSelection.active) return;
+  
+  // Don't fact-check extension UI elements
+  if (isExtensionElement(e.target)) {
+    console.log('Clicked on extension UI - ignoring');
+    return;
+  }
+  
   e.preventDefault();
   e.stopPropagation();
   const target = e.target;
@@ -335,7 +404,8 @@ async function onFcClick(e) {
 
   // Show loading overlay attached to the clicked element (absolute relative to element)
   try {
-    const loading = attachOverlayToElement(container, 'Fact checking…', { backgroundColor: 'rgba(30, 64, 175, 0.95)' });
+    const loadingHtml = `<div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span style="font-weight:600;">Fact checking…</span></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>`;
+    const loading = attachOverlayToElement(container, loadingHtml, { backgroundColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' });
 
     // Call background for analysis
     try {
@@ -352,36 +422,60 @@ async function onFcClick(e) {
         
         // Check if content is flagged as fake news
         const isFakeNews = result.flagged === true;
-        const percentage = result.percentage || 0;
+        const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
         const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
         const summary = isFakeNews 
-          ? `This content has been flagged as fake news (${percentage}% confidence).` 
+          ? `This content has been flagged as fake news (${percentage}% similarity).` 
           : 'This content is not in our fact-checking database.';
-        const backgroundColor = isFakeNews ? 'rgba(220, 38, 38, 0.95)' : 'rgba(107, 114, 128, 0.95)';
+        const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
+        const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
         
         const html = `
-          <div>
-            <strong style="font-size:15px;">${label}</strong><br>
-            <div style=\"margin-top:6px; font-size:13px; line-height:1.4;\">${summary}</div>
-            <div style=\"margin-top:12px; font-size:11px; opacity:0.85; font-style:italic; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px;\">\"${preview}\"</div>
-            <button class="fnf-element-learn-more-btn" style="
-              margin-top:12px;
-              background:rgba(255,255,255,0.2);
-              border:1px solid rgba(255,255,255,0.3);
-              color:#fff;
-              padding:8px 16px;
-              border-radius:6px;
-              font-size:12px;
-              font-weight:600;
-              cursor:pointer;
-              width:100%;
-              transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-              Learn More →
-            </button>
+          <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:12px;">
+            <div data-fnf-element="true" style="
+              width:42px;
+              height:42px;
+              border-radius:10px;
+              background:${iconBg};
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-size:22px;
+              flex-shrink:0;
+            ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
+            <div data-fnf-element="true" style="flex:1; min-width:0;">
+              <strong data-fnf-element="true" style="font-size:16px; font-weight:700; display:block; margin-bottom:8px;">${label}</strong>
+              <div data-fnf-element="true" style="font-size:13px; line-height:1.5; margin-bottom:12px; opacity:0.95;">${summary}</div>
+              <div data-fnf-element="true" style="
+                background:rgba(0,0,0,0.15);
+                padding:10px;
+                border-radius:6px;
+                font-size:12px;
+                line-height:1.4;
+                font-style:italic;
+                opacity:0.9;
+                border-left:3px solid rgba(255,255,255,0.3);
+                margin-bottom:12px;
+              ">"${preview}"</div>
+              <button data-fnf-element="true" class="fnf-element-learn-more-btn" style="
+                background:rgba(255,255,255,0.9);
+                border:none;
+                color:${isFakeNews ? '#dc2626' : '#1e40af'};
+                padding:10px 16px;
+                border-radius:8px;
+                font-size:13px;
+                font-weight:700;
+                cursor:pointer;
+                width:100%;
+                transition: all 0.2s;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+              " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 10px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'">
+                Learn More →
+              </button>
+            </div>
           </div>
         `;
-        const overlay = attachOverlayToElement(container, html, { backgroundColor });
+        const overlay = attachOverlayToElement(container, html, { backgroundColor, isFakeNews });
         
         // Add Learn More button functionality
         const learnMoreBtn = overlay.querySelector('.fnf-element-learn-more-btn');
@@ -418,23 +512,40 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
   } catch (_) {}
   const overlay = document.createElement('div');
   overlay.className = 'fnf-attached-overlay';
+  overlay.dataset.fnfElement = 'true';
   overlay.style.position = 'absolute';
   overlay.style.top = options.top || '8px';
   overlay.style.right = options.right || '8px';
-  overlay.style.backgroundColor = options.backgroundColor || 'rgba(30, 64, 175, 0.95)';
+  overlay.style.background = options.backgroundColor || 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
   overlay.style.color = '#ffffff';
-  overlay.style.padding = '10px 12px';
-  overlay.style.borderRadius = '10px';
-  overlay.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+  overlay.style.padding = '16px 18px';
+  overlay.style.borderRadius = '14px';
+  overlay.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
   overlay.style.zIndex = '99999';
-  overlay.style.fontFamily = 'Arial, sans-serif';
+  overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   overlay.style.fontSize = '13px';
-  overlay.style.maxWidth = '360px';
+  overlay.style.maxWidth = '420px';
   overlay.style.pointerEvents = 'auto';
+  overlay.style.backdropFilter = 'blur(10px)';
   overlay.innerHTML = `
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div style="flex:1;">${html}</div>
-      <button class="close-overlay" style="background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer; line-height:1;">×</button>
+    <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:8px;">
+      <div data-fnf-element="true" style="flex:1;">${html}</div>
+      <button data-fnf-element="true" class="close-overlay" style="
+        background:rgba(255,255,255,0.2);
+        border:none;
+        color:#fff;
+        font-size:18px;
+        cursor:pointer;
+        line-height:1;
+        flex-shrink:0;
+        width:26px;
+        height:26px;
+        border-radius:5px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        transition: background 0.2s;
+      " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
     </div>
   `;
   const closeBtn = overlay.querySelector('.close-overlay');
@@ -442,6 +553,8 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
   try { anchorEl.appendChild(overlay); } catch (_) {
     try { document.body.appendChild(overlay); } catch (_) {}
   }
+  // Mark all children as extension elements
+  markAllChildrenAsExtensionElements(overlay);
   return overlay;
 }
 
@@ -451,6 +564,7 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
 function createTextSelectionButton() {
   const button = document.createElement('button');
   button.id = 'fnf-text-selection-button';
+  button.dataset.fnfElement = 'true';
   button.innerHTML = '🛡️ Fact-check';
   button.style.position = 'fixed';
   button.style.zIndex = '999999';
@@ -536,6 +650,20 @@ function handleTextSelection() {
       return;
     }
     
+    // Check if selection is within extension UI
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      const element = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+      
+      if (isExtensionElement(element)) {
+        console.log('Selection is within extension UI - ignoring');
+        hideTextSelectionButton();
+        __textSelection.lastSelection = null;
+        return;
+      }
+    }
+    
     // Create button if it doesn't exist
     if (!__textSelection.button) {
       __textSelection.button = createTextSelectionButton();
@@ -554,6 +682,7 @@ function handleTextSelection() {
 function createTextOverlayAbsolute(rect, content, backgroundColor) {
   const overlay = document.createElement('div');
   overlay.className = 'fnf-text-result-overlay fnf-text-overlay-absolute';
+  overlay.dataset.fnfElement = 'true';
   overlay.style.position = 'absolute';
   
   // Calculate absolute position relative to document
@@ -567,18 +696,23 @@ function createTextOverlayAbsolute(rect, content, backgroundColor) {
   overlay.style.top = top + 'px';
   overlay.style.backgroundColor = backgroundColor;
   overlay.style.color = '#ffffff';
-  overlay.style.padding = '12px 16px';
-  overlay.style.borderRadius = '10px';
-  overlay.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+  overlay.style.padding = '20px 24px';
+  overlay.style.borderRadius = '16px';
+  overlay.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
   overlay.style.zIndex = '999999';
-  overlay.style.fontFamily = 'Arial, sans-serif';
-  overlay.style.fontSize = '13px';
-  overlay.style.maxWidth = '400px';
-  overlay.style.minWidth = '250px';
+  overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  overlay.style.fontSize = '14px';
+  overlay.style.maxWidth = '460px';
+  overlay.style.minWidth = '320px';
   overlay.style.pointerEvents = 'auto';
+  overlay.style.backdropFilter = 'blur(10px)';
   overlay.innerHTML = content;
   
   document.body.appendChild(overlay);
+  
+  // Mark all children as extension elements
+  markAllChildrenAsExtensionElements(overlay);
+  
   return overlay;
 }
 
@@ -602,42 +736,82 @@ async function performTextFactCheck(text, rect, loadingOverlay) {
       const preview = text.slice(0, 120) + (text.length > 120 ? '…' : '');
       
       const isFakeNews = result.flagged === true;
-      const percentage = result.percentage || 0;
+      const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
       
       // Different messaging based on fake news status
       const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
       const summary = isFakeNews 
-        ? `This content has been flagged as fake news (${percentage}% confidence).` 
+        ? `This content has been flagged as fake news (${percentage}% similarity).` 
         : 'This content is not in our fact-checking database.';
-      const backgroundColor = isFakeNews ? 'rgba(220, 38, 38, 0.95)' : 'rgba(107, 114, 128, 0.95)';
+      const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
+      const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
       
       const resultContent = `
-        <div style="display:flex; align-items:flex-start; gap:10px;">
-          <div style="flex:1;">
-            <strong style="font-size:15px;">${label}</strong><br>
-            <div style="margin-top:6px; font-size:13px; line-height:1.4;">${summary}</div>
-            <div style="margin-top:12px; font-size:11px; opacity:0.85; font-style:italic; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px;">"${preview}"</div>
-            <button class="fnf-learn-more-btn" style="
-              margin-top:12px;
-              background:rgba(255,255,255,0.2);
-              border:1px solid rgba(255,255,255,0.3);
-              color:#fff;
-              padding:8px 16px;
-              border-radius:6px;
-              font-size:12px;
-              font-weight:600;
+        <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:16px;">
+          <div data-fnf-element="true" style="
+            width:48px;
+            height:48px;
+            border-radius:12px;
+            background:${iconBg};
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:24px;
+            flex-shrink:0;
+          ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
+          <div data-fnf-element="true" style="flex:1; min-width:0;">
+            <div data-fnf-element="true" style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
+              <strong data-fnf-element="true" style="font-size:18px; font-weight:700; line-height:1.3;">${label}</strong>
+              <button data-fnf-element="true" class="close-overlay" style="
+                background:rgba(255,255,255,0.2);
+                border:none;
+                color:#fff;
+                font-size:20px;
+                cursor:pointer;
+                line-height:1;
+                flex-shrink:0;
+                width:28px;
+                height:28px;
+                border-radius:6px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                transition: background 0.2s;
+              " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
+            </div>
+            <div data-fnf-element="true" style="font-size:14px; line-height:1.6; margin-bottom:16px; opacity:0.95;">${summary}</div>
+            <div data-fnf-element="true" style="
+              background:rgba(0,0,0,0.15);
+              padding:12px;
+              border-radius:8px;
+              font-size:13px;
+              line-height:1.5;
+              font-style:italic;
+              opacity:0.9;
+              border-left:3px solid rgba(255,255,255,0.3);
+              margin-bottom:16px;
+            ">"${preview}"</div>
+            <button data-fnf-element="true" class="fnf-learn-more-btn" style="
+              background:rgba(255,255,255,0.9);
+              border:none;
+              color:${isFakeNews ? '#dc2626' : '#1e40af'};
+              padding:12px 20px;
+              border-radius:10px;
+              font-size:14px;
+              font-weight:700;
               cursor:pointer;
               width:100%;
               transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.15)'">
               Learn More →
             </button>
           </div>
-          <button class="close-overlay" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; line-height:1; flex-shrink:0;">×</button>
         </div>
       `;
       
-      const resultOverlay = createTextOverlayAbsolute(rect, resultContent, backgroundColor);
+      const resultOverlay = createTextOverlayAbsolute(rect, resultContent, isFakeNews ? '#dc2626' : '#3b82f6');
+      resultOverlay.style.background = backgroundColor;
       
       const closeBtn = resultOverlay.querySelector('.close-overlay');
       closeBtn.addEventListener('click', () => {
@@ -688,13 +862,14 @@ function showFactCheckSidePanel(result, text) {
   if (existingPanel) existingPanel.remove();
   
   const isFakeNews = result.flagged === true;
-  const percentage = result.percentage || 0;
+  const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
   const preview = text.slice(0, 200) + (text.length > 200 ? '…' : '');
   
   // Create backdrop
   const backdrop = document.createElement('div');
   backdrop.id = 'fnf-fact-check-backdrop';
   backdrop.className = 'fnf-fact-check-panel-backdrop';
+  backdrop.dataset.fnfElement = 'true';
   backdrop.style.cssText = `
     position: fixed;
     top: 0;
@@ -711,6 +886,7 @@ function showFactCheckSidePanel(result, text) {
   const panel = document.createElement('div');
   panel.id = 'fnf-fact-check-panel';
   panel.className = `fnf-fact-check-panel ${isFakeNews ? 'fnf-fake-news' : 'fnf-not-in-db'}`;
+  panel.dataset.fnfElement = 'true';
   panel.style.cssText = `
     position: fixed;
     top: 0;
@@ -847,6 +1023,10 @@ function showFactCheckSidePanel(result, text) {
   document.body.appendChild(backdrop);
   document.body.appendChild(panel);
   
+  // Mark all children as extension elements
+  markAllChildrenAsExtensionElements(backdrop);
+  markAllChildrenAsExtensionElements(panel);
+  
   // Add event listeners
   const closeBtn = panel.querySelector('.fnf-close-panel-btn');
   const primaryBtn = panel.querySelector('.fnf-panel-btn-primary');
@@ -895,7 +1075,9 @@ async function handleTextSelectionFactCheck(e) {
   const rect = range.getBoundingClientRect();
   
   // Create loading overlay with absolute positioning
-  const loadingOverlay = createTextOverlayAbsolute(rect, '🔄 Fact checking...', 'rgba(30, 64, 175, 0.95)');
+  const loadingHtml = `<div style="display:flex; align-items:center; gap:12px;"><div style="width:24px; height:24px; border:3px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.8s linear infinite;"></div><span style="font-weight:600; font-size:15px;">Fact checking…</span></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>`;
+  const loadingOverlay = createTextOverlayAbsolute(rect, loadingHtml, '#6366f1');
+  loadingOverlay.style.background = 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
   
   // Perform fact check
   performTextFactCheck(text, rect, loadingOverlay);
@@ -905,8 +1087,8 @@ async function handleTextSelectionFactCheck(e) {
 function initTextSelectionFactCheck() {
   // Listen for text selection
   document.addEventListener('mouseup', (e) => {
-    // Don't interfere with clicking our own button
-    if (e.target?.id === 'fnf-text-selection-button') return;
+    // Don't interfere with extension UI
+    if (e.target?.id === 'fnf-text-selection-button' || isExtensionElement(e.target)) return;
     
     // Small delay to ensure selection is complete
     setTimeout(() => handleTextSelection(), 10);
@@ -919,7 +1101,8 @@ function initTextSelectionFactCheck() {
   
   // Hide button when clicking elsewhere
   document.addEventListener('mousedown', (e) => {
-    if (e.target?.id === 'fnf-text-selection-button') return;
+    // Don't interfere with extension UI
+    if (e.target?.id === 'fnf-text-selection-button' || isExtensionElement(e.target)) return;
     
     // Check if there's still a selection
     setTimeout(() => {
@@ -995,6 +1178,7 @@ function createToolbarOverlay() {
   if (document.getElementById('fnf-toolbar')) return;
   const toolbar = document.createElement('div');
   toolbar.id = 'fnf-toolbar';
+  toolbar.dataset.fnfElement = 'true';
   toolbar.style.position = 'fixed';
   toolbar.style.top = '20px';
   toolbar.style.right = '20px';
@@ -1056,6 +1240,9 @@ function createToolbarOverlay() {
   toolbar.appendChild(factBtn);
   toolbar.appendChild(closeBtn);
   document.body.appendChild(toolbar);
+
+  // Mark all children as extension elements
+  markAllChildrenAsExtensionElements(toolbar);
 
   // Make draggable using existing helper
   makeDraggable(toolbar);
