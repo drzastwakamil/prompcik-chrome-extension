@@ -753,10 +753,10 @@ function createBubble(anchorElOrRect, options = {}) {
       if (cancelled) return;
       
       const isFakeNews = result.flagged === true;
-      const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
+      const percentage = result.confidence ? Math.round(result.confidence * 100) : 0;
       const label = isFakeNews ? '⚠️ Fake News Alert!' : 'ℹ️ Not in Database';
       const summary = isFakeNews 
-        ? `This content has been flagged as fake news (${percentage}% similarity).` 
+        ? `This content has been flagged as fake news (${percentage}% confidence).` 
         : 'This content is not in our fact-checking database.';
       const backgroundColor = isFakeNews ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
       const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(229, 231, 235, 0.2)';
@@ -793,7 +793,7 @@ function createBubble(anchorElOrRect, options = {}) {
             <button data-fnf-element="true" class="fnf-element-learn-more-btn" style="
               background:rgba(255,255,255,0.95);
               border:none;
-              color:${isFakeNews ? '#dc2626' : '#1e40af'};
+              color:${isFakeNews ? '#dc2626' : '#4b5563'};
               padding:11px 18px;
               border-radius:10px;
               font-size:14px;
@@ -872,8 +872,9 @@ function showFactCheckSidePanel(result, text) {
   if (existingPanel) existingPanel.remove();
   
   const isFakeNews = result.flagged === true;
-  const percentage = result.similarity ? Math.round(result.similarity * 100) : 0;
+  const percentage = result.confidence ? Math.round(result.confidence * 100) : 0;
   const preview = text.slice(0, 200) + (text.length > 200 ? '…' : '');
+  const reasoning = result.reasoning || '';
   
   // Create backdrop
   const backdrop = document.createElement('div');
@@ -944,9 +945,21 @@ function showFactCheckSidePanel(result, text) {
             <span>What This Means</span>
           </h3>
           <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#fef2f2; border-radius:8px; border-left:4px solid #dc2626;">
-            This content has been flagged as fake news by our system. We strongly recommend not sharing or believing this information without verification from reliable sources.
+            This content has been flagged as fake news by our system with ${percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.
           </div>
         </div>
+
+        ${reasoning ? `
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>🧠</span>
+            <span>Analysis Reasoning</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#fef2f2; border-radius:8px; border-left:4px solid #dc2626;">
+            ${reasoning}
+          </div>
+        </div>
+        ` : ''}
 
         <div style="margin-bottom:24px;">
           <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
@@ -1000,6 +1013,18 @@ function showFactCheckSidePanel(result, text) {
             This content is not currently in our fact-checking database. This doesn't mean it's true or false - we simply don't have information about it.
           </div>
         </div>
+
+        ${reasoning ? `
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+            <span>🧠</span>
+            <span>Analysis Reasoning</span>
+          </h3>
+          <div style="font-size:14px; line-height:1.6; color:#4b5563; padding:16px; background:#f9fafb; border-radius:8px; border-left:4px solid #6b7280;">
+            ${reasoning}
+          </div>
+        </div>
+        ` : ''}
 
         <div style="margin-bottom:24px;">
           <h3 style="font-size:16px; font-weight:700; color:#111827; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
