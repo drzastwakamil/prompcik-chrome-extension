@@ -431,39 +431,40 @@ async function onFcClick(e) {
         const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
         
         const html = `
-          <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:12px;">
+          <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:16px;">
             <div data-fnf-element="true" style="
-              width:42px;
-              height:42px;
-              border-radius:10px;
+              min-width:48px;
+              width:48px;
+              height:48px;
+              border-radius:12px;
               background:${iconBg};
               display:flex;
               align-items:center;
               justify-content:center;
-              font-size:22px;
+              font-size:26px;
               flex-shrink:0;
             ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
             <div data-fnf-element="true" style="flex:1; min-width:0;">
-              <strong data-fnf-element="true" style="font-size:16px; font-weight:700; display:block; margin-bottom:8px;">${label}</strong>
-              <div data-fnf-element="true" style="font-size:13px; line-height:1.5; margin-bottom:12px; opacity:0.95;">${summary}</div>
+              <strong data-fnf-element="true" style="font-size:17px; font-weight:700; display:block; margin-bottom:10px; line-height:1.2;">${label}</strong>
+              <div data-fnf-element="true" style="font-size:14px; line-height:1.6; margin-bottom:14px; opacity:0.95;">${summary}</div>
               <div data-fnf-element="true" style="
                 background:rgba(0,0,0,0.15);
-                padding:10px;
-                border-radius:6px;
-                font-size:12px;
-                line-height:1.4;
+                padding:12px 14px;
+                border-radius:8px;
+                font-size:13px;
+                line-height:1.5;
                 font-style:italic;
                 opacity:0.9;
                 border-left:3px solid rgba(255,255,255,0.3);
-                margin-bottom:12px;
+                margin-bottom:14px;
               ">"${preview}"</div>
               <button data-fnf-element="true" class="fnf-element-learn-more-btn" style="
-                background:rgba(255,255,255,0.9);
+                background:rgba(255,255,255,0.95);
                 border:none;
                 color:${isFakeNews ? '#dc2626' : '#1e40af'};
-                padding:10px 16px;
-                border-radius:8px;
-                font-size:13px;
+                padding:11px 18px;
+                border-radius:10px;
+                font-size:14px;
                 font-weight:700;
                 cursor:pointer;
                 width:100%;
@@ -518,13 +519,14 @@ function attachOverlayToElement(anchorEl, html, options = {}) {
   overlay.style.right = options.right || '8px';
   overlay.style.background = options.backgroundColor || 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)';
   overlay.style.color = '#ffffff';
-  overlay.style.padding = '16px 18px';
-  overlay.style.borderRadius = '14px';
+  overlay.style.padding = '20px 22px';
+  overlay.style.borderRadius = '16px';
   overlay.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
   overlay.style.zIndex = '99999';
   overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-  overlay.style.fontSize = '13px';
-  overlay.style.maxWidth = '420px';
+  overlay.style.fontSize = '14px';
+  overlay.style.maxWidth = '480px';
+  overlay.style.minWidth = '360px';
   overlay.style.pointerEvents = 'auto';
   overlay.style.backdropFilter = 'blur(10px)';
   overlay.innerHTML = `
@@ -696,14 +698,14 @@ function createTextOverlayAbsolute(rect, content, backgroundColor) {
   overlay.style.top = top + 'px';
   overlay.style.backgroundColor = backgroundColor;
   overlay.style.color = '#ffffff';
-  overlay.style.padding = '20px 24px';
-  overlay.style.borderRadius = '16px';
+  overlay.style.padding = '24px 26px';
+  overlay.style.borderRadius = '18px';
   overlay.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset';
   overlay.style.zIndex = '999999';
   overlay.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-  overlay.style.fontSize = '14px';
-  overlay.style.maxWidth = '460px';
-  overlay.style.minWidth = '320px';
+  overlay.style.fontSize = '15px';
+  overlay.style.maxWidth = '500px';
+  overlay.style.minWidth = '380px';
   overlay.style.pointerEvents = 'auto';
   overlay.style.backdropFilter = 'blur(10px)';
   overlay.innerHTML = content;
@@ -747,57 +749,59 @@ async function performTextFactCheck(text, rect, loadingOverlay) {
       const iconBg = isFakeNews ? 'rgba(254, 226, 226, 0.2)' : 'rgba(219, 234, 254, 0.2)';
       
       const resultContent = `
-        <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:16px;">
+        <div data-fnf-element="true" style="display:flex; align-items:flex-start; gap:18px;">
           <div data-fnf-element="true" style="
-            width:48px;
-            height:48px;
-            border-radius:12px;
+            min-width:52px;
+            width:52px;
+            height:52px;
+            border-radius:14px;
             background:${iconBg};
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:24px;
+            font-size:28px;
             flex-shrink:0;
           ">${isFakeNews ? '⚠️' : 'ℹ️'}</div>
           <div data-fnf-element="true" style="flex:1; min-width:0;">
-            <div data-fnf-element="true" style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;">
-              <strong data-fnf-element="true" style="font-size:18px; font-weight:700; line-height:1.3;">${label}</strong>
+            <div data-fnf-element="true" style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px;">
+              <strong data-fnf-element="true" style="font-size:19px; font-weight:700; line-height:1.2;">${label}</strong>
               <button data-fnf-element="true" class="close-overlay" style="
                 background:rgba(255,255,255,0.2);
                 border:none;
                 color:#fff;
-                font-size:20px;
+                font-size:22px;
                 cursor:pointer;
                 line-height:1;
                 flex-shrink:0;
-                width:28px;
-                height:28px;
-                border-radius:6px;
+                min-width:32px;
+                width:32px;
+                height:32px;
+                border-radius:8px;
                 display:flex;
                 align-items:center;
                 justify-content:center;
                 transition: background 0.2s;
               " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
             </div>
-            <div data-fnf-element="true" style="font-size:14px; line-height:1.6; margin-bottom:16px; opacity:0.95;">${summary}</div>
+            <div data-fnf-element="true" style="font-size:15px; line-height:1.6; margin-bottom:18px; opacity:0.95;">${summary}</div>
             <div data-fnf-element="true" style="
               background:rgba(0,0,0,0.15);
-              padding:12px;
-              border-radius:8px;
-              font-size:13px;
-              line-height:1.5;
+              padding:14px 16px;
+              border-radius:10px;
+              font-size:14px;
+              line-height:1.6;
               font-style:italic;
               opacity:0.9;
               border-left:3px solid rgba(255,255,255,0.3);
-              margin-bottom:16px;
+              margin-bottom:18px;
             ">"${preview}"</div>
             <button data-fnf-element="true" class="fnf-learn-more-btn" style="
-              background:rgba(255,255,255,0.9);
+              background:rgba(255,255,255,0.95);
               border:none;
               color:${isFakeNews ? '#dc2626' : '#1e40af'};
-              padding:12px 20px;
-              border-radius:10px;
-              font-size:14px;
+              padding:13px 22px;
+              border-radius:12px;
+              font-size:15px;
               font-weight:700;
               cursor:pointer;
               width:100%;
