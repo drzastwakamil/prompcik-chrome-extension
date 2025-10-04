@@ -33,8 +33,6 @@ A Chrome extension that helps users fact-check content on any webpage to identif
    - Select any text element
    - Get instant fact-checking results!
 
-📖 **Detailed instructions:** See [INSTALL.md](./INSTALL.md)
-
 ### For Developers
 
 ```bash
@@ -48,7 +46,7 @@ npm run dev
 npm run build
 ```
 
-📚 **Development guide:** See [QUICK_START.md](./QUICK_START.md)
+📚 **Development guide:** See [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)
 
 ## 📁 Project Structure
 
@@ -60,12 +58,25 @@ chrome_extension/
 │   │   ├── FactCheckSidePanel.vue
 │   │   ├── FloatingToolbar.vue
 │   │   └── NotificationToast.vue
-│   ├── content/                 # Content script
+│   ├── content/                 # Content script entry
+│   │   └── main.js
 │   └── popup/                   # Extension popup
-├── dist/                        # Built extension (load this in Chrome)
-├── background.js                # Background service worker
-├── vite.config.js              # Build configuration
-└── package.json                # Dependencies
+│       ├── Popup.vue
+│       └── main.js
+├── dist/                        # Built extension (gitignored)
+├── docs/                        # Documentation
+│   ├── DEVELOPMENT.md          # Development workflow guide
+│   ├── MIGRATION.md            # Refactoring documentation
+│   └── ARCHIVE_BUG_FIXES.md   # Historical bug fixes
+├── scripts/
+│   └── post-build.js           # Post-build processing
+├── background.js               # Background service worker
+├── popup.html                  # Popup HTML template
+├── styles.css                  # Global styles
+├── manifest-dist.json          # Manifest template
+├── vite.config.js             # Content build config (IIFE)
+├── vite.config.popup.js       # Popup build config (ES modules)
+└── package.json               # Dependencies
 ```
 
 ## 🏗️ Architecture
@@ -90,15 +101,13 @@ This extension was recently refactored from vanilla JavaScript to Vue.js:
 - ✅ **Improved DX** - Better tooling and developer experience
 - ✅ **Same functionality** - All features preserved
 
-📖 **Learn more:** See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) and [REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)
+📖 **Learn more:** See [docs/MIGRATION.md](./docs/MIGRATION.md)
 
 ## 📖 Documentation
 
-- **[INSTALL.md](./INSTALL.md)** - Installation instructions
-- **[QUICK_START.md](./QUICK_START.md)** - Get started in 3 steps
-- **[README_VUE.md](./README_VUE.md)** - Vue.js architecture overview
-- **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Detailed refactoring explanation
-- **[REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)** - Summary of changes
+- **[docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md)** - Complete development workflow guide
+- **[docs/MIGRATION.md](./docs/MIGRATION.md)** - Detailed refactoring explanation and architecture
+- **[docs/ARCHIVE_BUG_FIXES.md](./docs/ARCHIVE_BUG_FIXES.md)** - Historical bug fixes
 
 ## 🛠️ Development
 
@@ -162,6 +171,7 @@ Required permissions are defined in `manifest-dist.json`:
 - **Extension Type:** Manifest V3
 - **Language:** JavaScript (ES modules)
 - **Styling:** Scoped CSS with animations
+- **Architecture:** Component-based with two-config build system (IIFE for content, ES modules for popup/background)
 
 ## 🐛 Troubleshooting
 
@@ -181,7 +191,7 @@ npm install
 npm run build
 ```
 
-📖 **More help:** See [INSTALL.md](./INSTALL.md) troubleshooting section
+📖 **More help:** See [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) troubleshooting section
 
 ## 📄 License
 
@@ -194,7 +204,7 @@ This is a private project. For questions or issues, please contact the maintaine
 ## 📞 Support
 
 For issues or questions:
-1. Check the [INSTALL.md](./INSTALL.md) troubleshooting section
+1. Check the [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) troubleshooting section
 2. Review browser console for errors
 3. Check that the backend API is accessible
 

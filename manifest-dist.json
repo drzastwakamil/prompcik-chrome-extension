@@ -10,7 +10,6 @@
     "storage"
   ],
   "host_permissions": [
-    "https://your-backend.example.com/*",
     "https://tarcza-factcheck.vercel.app/*"
   ],
   "background": {
