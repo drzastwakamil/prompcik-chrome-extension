@@ -1,7 +1,12 @@
 // Content script - runs on every webpage
 console.log('DOM Reader & Overlay Extension loaded');
-// Feature flag: disable backend analysis requests while developing extraction
+// Feature flags
+// - disable backend analysis requests while developing extraction
 const FNF_BACKEND_ANALYSIS_ENABLED = false;
+// - disable demo overlays that auto-appear on page load
+const FNF_DEMO_OVERLAYS_ENABLED = false;
+// - disable automatic post discovery; only allow user-initiated analysis
+const FNF_POST_DISCOVERY_ENABLED = false;
 
 // Function to read DOM information
 function readDOM() {
@@ -25,6 +30,7 @@ function addOverlayElement(config = {}) {
     text = 'Extension Overlay',
     top = '20px',
     right = '20px',
+    left,
     backgroundColor = 'rgba(59, 130, 246, 0.95)',
     color = '#ffffff',
     id = 'extension-overlay-' + Date.now()
@@ -39,6 +45,10 @@ function addOverlayElement(config = {}) {
   overlay.style.position = 'fixed';
   overlay.style.top = top;
   overlay.style.right = right;
+  if (left !== undefined) {
+    overlay.style.left = typeof left === 'number' ? left + 'px' : left;
+    overlay.style.right = 'auto';
+  }
   overlay.style.backgroundColor = backgroundColor;
   overlay.style.color = color;
   overlay.style.padding = '15px 20px';
@@ -349,6 +359,148 @@ function showAnalysisOverlay(result, analyzedText) {
   });
 }
 
+// ------------------------------
+// Fact-check selection mode
+// ------------------------------
+let __fcSelection = {
+  active: false,
+  highlightBox: null,
+  prevCursor: '',
+  hoverEl: null,
+};
+
+function startFactCheckSelectionMode() {
+  try { stopFactCheckSelectionMode(); } catch (_) {}
+  __fcSelection.active = true;
+  __fcSelection.prevCursor = document.body.style.cursor;
+  try { document.body.style.cursor = 'crosshair'; } catch (_) {}
+  __fcSelection.highlightBox = createHighlightBox();
+  window.addEventListener('mousemove', onFcMouseMove, { capture: true, passive: true });
+  window.addEventListener('click', onFcClick, { capture: true, once: false });
+  window.addEventListener('keydown', onFcKeyDown, { capture: true });
+}
+
+function stopFactCheckSelectionMode() {
+  if (!__fcSelection.active) return;
+  __fcSelection.active = false;
+  window.removeEventListener('mousemove', onFcMouseMove, { capture: true });
+  window.removeEventListener('click', onFcClick, { capture: true });
+  window.removeEventListener('keydown', onFcKeyDown, { capture: true });
+  try { document.body.style.cursor = __fcSelection.prevCursor || ''; } catch (_) {}
+  if (__fcSelection.highlightBox && __fcSelection.highlightBox.parentNode) {
+    try { __fcSelection.highlightBox.remove(); } catch (_) {}
+  }
+  __fcSelection.highlightBox = null;
+  __fcSelection.hoverEl = null;
+}
+
+function createHighlightBox() {
+  const box = document.createElement('div');
+  box.className = 'fnf-fc-highlight-box';
+  box.style.position = 'fixed';
+  box.style.zIndex = '999998';
+  box.style.pointerEvents = 'none';
+  box.style.border = '2px solid #22c55e';
+  box.style.borderRadius = '6px';
+  box.style.background = 'rgba(34, 197, 94, 0.08)';
+  box.style.top = '0px';
+  box.style.left = '0px';
+  box.style.width = '0px';
+  box.style.height = '0px';
+  document.body.appendChild(box);
+  return box;
+}
+
+function updateHighlightBoxForElement(el) {
+  if (!__fcSelection.highlightBox) return;
+  if (!el || el.classList?.contains('extension-overlay')) {
+    __fcSelection.highlightBox.style.width = '0px';
+    __fcSelection.highlightBox.style.height = '0px';
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  __fcSelection.highlightBox.style.top = Math.max(0, rect.top - 2) + 'px';
+  __fcSelection.highlightBox.style.left = Math.max(0, rect.left - 2) + 'px';
+  __fcSelection.highlightBox.style.width = Math.max(0, rect.width + 4) + 'px';
+  __fcSelection.highlightBox.style.height = Math.max(0, rect.height + 4) + 'px';
+}
+
+function onFcMouseMove(e) {
+  if (!__fcSelection.active) return;
+  const el = e.target;
+  __fcSelection.hoverEl = el;
+  updateHighlightBoxForElement(el);
+}
+
+function onFcKeyDown(e) {
+  if (!__fcSelection.active) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    stopFactCheckSelectionMode();
+  }
+}
+
+async function onFcClick(e) {
+  if (!__fcSelection.active) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const target = e.target;
+  stopFactCheckSelectionMode();
+
+  // Extract text from clicked element
+  let container = target;
+  try {
+    const platformSelectors = [
+      'article[data-testid="tweet"]', 'div[data-testid="tweet"]',
+      'div[role="article"]', 'div[data-ad-preview] div[role="article"]',
+      'div[data-testid="post-container"]', '.Post', 'shreddit-post',
+      'div.feed-shared-update-v2', 'div.feed-shared-inline-show-more-text',
+      'ytd-comment-thread-renderer', 'article', '[role="article"]'
+    ];
+    const maybe = findClosestMatchingAncestor(target, platformSelectors);
+    if (maybe) container = maybe;
+  } catch (_) {}
+  const text = (extractTextFromKnownContainer(container) || getVisibleTextFromElement(container) || '').trim();
+
+  // Show loading overlay near clicked element (no spinner/brand required)
+  try {
+    const rect = container.getBoundingClientRect();
+    const top = Math.max(8, rect.top + 8) + 'px';
+    const left = Math.max(8, rect.left + 8) + 'px';
+    const loading = addOverlayElement({ text: 'Fact checking…', top, left, backgroundColor: 'rgba(30, 64, 175, 0.95)' });
+
+    // Call background for analysis (mocked)
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'analyzeText', text, url: window.location.href, source: 'selection-click' });
+      loading.remove();
+      if (response && response.success) {
+        // Show result anchored to element
+        const result = response.result || {};
+        const preview = (text || '').slice(0, 160) + ((text || '').length > 160 ? '…' : '');
+        const label = result?.label || result?.classification || 'Analysis Result';
+        const confidence = typeof result?.confidence === 'number' ? (result.confidence * 100).toFixed(1) + '%' : (result?.score ? (Math.round(result.score * 1000) / 10) + '%' : undefined);
+        const summary = result?.summary || result?.explanation || '';
+        const titleLine = confidence ? `${label} (${confidence})` : label;
+        const html = `
+          <div>
+            <strong>🛡️ ${titleLine}</strong><br>
+            ${summary ? `<div style="margin-top:6px; font-size:12px; line-height:1.4;">${summary}</div>` : ''}
+            <div style="margin-top:8px; font-size:11px; opacity:0.85;">Snippet: ${preview}</div>
+          </div>
+        `;
+        addOverlayElement({ text: html, top, left, backgroundColor: 'rgba(16, 185, 129, 0.95)' });
+      } else {
+        addOverlayElement({ text: `❌ Fact-check failed: ${response?.error || 'Unknown error'}`, top, left, backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+      }
+    } catch (err) {
+      try { loading.remove(); } catch (_) {}
+      addOverlayElement({ text: `❌ Fact-check error: ${String(err?.message || err)}`, top, left, backgroundColor: 'rgba(239, 68, 68, 0.95)' });
+    }
+  } catch (errOuter) {
+    console.error('Fact-check selection error', errOuter);
+  }
+}
+
 // Function to fetch and display cat data
 async function fetchAndDisplayCats() {
   try {
@@ -474,6 +626,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => { await analyzeCurrentVisiblePost(); })();
     sendResponse({ success: true, started: true });
     return false;
+  } else if (request.action === 'startFactCheckSelection') {
+    try {
+      startFactCheckSelectionMode();
+      sendResponse({ success: true });
+    } catch (error) {
+      sendResponse({ success: false, error: error.message });
+    }
+    return false;
   } else if (request.action === 'getDiscoveryStatus') {
     try {
       const status = (window.__fnfPDS && typeof window.__fnfPDS.getStatus === 'function') ? window.__fnfPDS.getStatus() : { running: false };
@@ -540,38 +700,41 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
-// Add a simple overlay on load as a demo
-setTimeout(() => {
-  addOverlayElement({
-    text: '🎉 Extension Active! (Drag me)',
-    top: '20px',
-    right: '20px',
-    backgroundColor: 'rgba(59, 130, 246, 0.95)'
-  });
-  // Provide a quick action to analyze the visible post
-  const action = document.createElement('button');
-  action.textContent = '🛡️ Analyze visible post';
-  action.style.background = 'transparent';
-  action.style.border = '1px solid rgba(255,255,255,0.6)';
-  action.style.color = '#fff';
-  action.style.padding = '6px 8px';
-  action.style.borderRadius = '6px';
-  action.style.fontSize = '12px';
-  action.style.marginTop = '8px';
-  const container = addOverlayElement({
-    text: '<strong>Fake News Filter</strong><br/><span style="font-size:12px; opacity:0.9;">Analyze what\'s on screen</span>',
-    top: '60px',
-    right: '20px',
-    backgroundColor: 'rgba(16, 185, 129, 0.95)'
-  });
-  container.appendChild(action);
-  action.addEventListener('click', () => analyzeCurrentVisiblePost());
-}, 1000);
+// Demo overlays disabled by default (security requirement)
+if (FNF_DEMO_OVERLAYS_ENABLED) {
+  setTimeout(() => {
+    addOverlayElement({
+      text: '🎉 Extension Active! (Drag me)',
+      top: '20px',
+      right: '20px',
+      backgroundColor: 'rgba(59, 130, 246, 0.95)'
+    });
+    // Provide a quick action to analyze the visible post
+    const action = document.createElement('button');
+    action.textContent = '🛡️ Analyze visible post';
+    action.style.background = 'transparent';
+    action.style.border = '1px solid rgba(255,255,255,0.6)';
+    action.style.color = '#fff';
+    action.style.padding = '6px 8px';
+    action.style.borderRadius = '6px';
+    action.style.fontSize = '12px';
+    action.style.marginTop = '8px';
+    const container = addOverlayElement({
+      text: '<strong>Fake News Filter</strong><br/><span style="font-size:12px; opacity:0.9;">Analyze what\'s on screen</span>',
+      top: '60px',
+      right: '20px',
+      backgroundColor: 'rgba(16, 185, 129, 0.95)'
+    });
+    container.appendChild(action);
+    action.addEventListener('click', () => analyzeCurrentVisiblePost());
+  }, 1000);
+}
 
 // ------------------------------------------------------------
 // PostDiscoveryService — efficiently finds and queues new posts
 // ------------------------------------------------------------
 (function initPostDiscoveryService() {
+  if (!FNF_POST_DISCOVERY_ENABLED) { return; }
   const CANDIDATE_SELECTORS = [
     'article[data-testid="tweet"]',
     'div[data-testid="tweet"]',

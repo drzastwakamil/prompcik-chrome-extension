@@ -7,9 +7,9 @@ A prototype Chrome extension that can read the DOM of any webpage and add absolu
 - 📖 **Read DOM**: Analyzes the current page and extracts information (title, paragraphs, images, links, headings, forms)
 - 🎨 **Add Overlays**: Injects custom absolutely positioned elements on top of the webpage
 - 🔄 **Draggable**: All overlays are draggable so you can reposition them
-- ✨ **Auto-load**: Automatically shows a demo overlay when loaded
 - 💬 **Interactive Popup**: Control panel to trigger different actions
 - 🐱 **API Integration**: Fetches data from external APIs (The Cat API & Cat Facts) and displays it in the DOM
+- 🛡️ **On-demand Fact-check**: Start a selection mode, hover to highlight, click an element to fact-check its text; shows a loading overlay and a mocked result
 
 ## Installation
 
@@ -23,10 +23,7 @@ A prototype Chrome extension that can read the DOM of any webpage and add absolu
 ## Usage
 
 ### Automatic Demo
-- Once installed, navigate to any webpage
-- After ~1 second, you'll see a blue overlay appear saying "🎉 Extension Active! (Drag me)"
-- You can drag this overlay anywhere on the page
-- Click the × button to close it
+Security requirement: automatic overlays are disabled by default. You can enable them for development by setting `FNF_DEMO_OVERLAYS_ENABLED = true` in `content.js`.
 
 ### Extension Popup
 Click the extension icon in the toolbar to open the control panel:
@@ -34,7 +31,20 @@ Click the extension icon in the toolbar to open the control panel:
 1. **Read DOM Info**: Extracts and displays DOM statistics in the popup
 2. **Add Custom Overlay**: Creates a new overlay with random color at a random position
 3. **Show DOM Stats**: Creates a green overlay on the page showing DOM statistics
-4. **🐱 Fetch Random Cat**: Fetches a random cat image and fact from external APIs and displays them on the page
+4. **🛡️ Fact-check (select element)**: Enters selection mode (crosshair cursor). Hover to see a green highlight around elements, click an element to trigger fact-check. Press ESC to cancel.
+5. **🐱 Fetch Random Cat**: Fetches a random cat image and fact from external APIs and displays them on the page
+
+### Fact-check Flow (On-demand)
+1. Click the popup button "🛡️ Fact-check (select element)"
+2. Move the cursor to highlight an element and click it
+3. A small overlay near the element shows: `Fact checking…`
+4. The extension gathers visible text from the clicked area and sends it to the background for analysis
+5. A mocked response is displayed in an overlay near the element, including a label, optional confidence, and a text snippet
+
+Notes:
+- No automatic scanning or analysis occurs; everything is user-initiated
+- Loading overlay uses the exact text `Fact checking…` without spinner or branding
+- Mocked backend responses are returned unless you enable a real backend
 
 ### Programmatic Usage
 
@@ -88,6 +98,7 @@ The manifest references icon files (`icon16.png`, `icon48.png`, `icon128.png`) w
 2. **DOM Reading**: The script queries the DOM for various elements and counts them
 3. **Overlay Creation**: Creates absolutely positioned `div` elements with high z-index (999999)
 4. **Message Passing**: Uses Chrome's messaging API to communicate between popup and content script
+5. **Selection Mode**: The content script draws a non-interactive highlight box around the hovered element and anchors overlays near the clicked element
 5. **Draggable Logic**: Implements mouse event handlers to allow dragging overlays
 
 ## Customization
@@ -98,6 +109,7 @@ You can easily customize the overlays by modifying the `addOverlayElement` funct
 - Modify positioning
 - Add more interactive features
 - Change styling and animations
+ - Overlays can be positioned via `top`/`right` or `top`/`left` (added for element anchoring)
 
 ## Troubleshooting
 
@@ -116,6 +128,10 @@ Chrome extensions have restrictions on:
 - Some protected internal pages
 
 Try it on regular websites like Google, GitHub, or any news site.
+
+### Fact-check selection mode tips
+- If nothing happens after clicking an element, try clicking a text-rich area (the extension prioritizes visible text extraction)
+- Press ESC to exit selection mode without clicking
 
 ## Browser Compatibility
 

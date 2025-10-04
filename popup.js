@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readDOMBtn = document.getElementById('readDOM');
   const addOverlayBtn = document.getElementById('addOverlay');
   const showInfoBtn = document.getElementById('showInfo');
-  const analyzeVisibleBtn = document.getElementById('analyzeVisible');
+  const startFactCheckBtn = document.getElementById('startFactCheck');
   const fetchCatsBtn = document.getElementById('fetchCats');
   const resultDiv = document.getElementById('result');
 
@@ -111,12 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Analyze visible post button
-  analyzeVisibleBtn.addEventListener('click', async () => {
+  // Start Fact-check selection button
+  startFactCheckBtn.addEventListener('click', async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      showResult('🔎 Analyzing visible post...');
-      chrome.tabs.sendMessage(tab.id, { action: 'analyzeVisiblePost' }, (response) => {
+      showResult('✳️ Fact-check mode: hover and click an element. Press ESC to cancel.');
+      chrome.tabs.sendMessage(tab.id, { action: 'startFactCheckSelection' }, (response) => {
         if (chrome.runtime.lastError) {
           if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
             handleConnectionError();
@@ -125,9 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           return;
         }
-        console.log('deez nuts response', response);
         if (response && response.success) {
-          showResult('⏳ Analysis started — watch the page overlay.');
+          // Selection mode active on the page; results will show as overlays
         } else if (response && !response.success) {
           showResult('❌ Error: ' + (response.error || 'Unknown error'), true);
         }
