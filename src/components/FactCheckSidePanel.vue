@@ -43,14 +43,14 @@
           <div :style="percentageCircleStyle">
             {{ percentage }}%
           </div>
-          <div :style="percentageLabelStyle">{{ isURLMode ? 'Similarity Level' : 'Confidence Level' }}</div>
+          <div :style="percentageLabelStyle">{{ isURLMode ? 'Poziom podobieństwa' : 'Poziom pewności' }}</div>
         </div>
         
         <!-- What This Means -->
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>{{ isURLMode ? '🌐' : '🔍' }}</span>
-            <span>{{ isURLMode ? 'URL Analysis' : 'Content Analysis' }}</span>
+            <span>{{ isURLMode ? 'Analiza URL' : 'Analiza treści' }}</span>
           </h3>
           <div :style="infoContentStyle">
             {{ mainMessage }}
@@ -61,7 +61,7 @@
         <div v-if="isURLMode && matchedURL" :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>🔗</span>
-            <span>Matched URL</span>
+            <span>Dopasowany URL</span>
           </h3>
           <div :style="{ ...infoContentStyle, fontFamily: 'monospace', fontSize: '13px', wordBreak: 'break-all' }">
             {{ matchedURL }}
@@ -72,7 +72,7 @@
         <div v-if="!isURLMode && reasoning" :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>🧠</span>
-            <span>Analysis Reasoning</span>
+            <span>Uzasadnienie analizy</span>
           </h3>
           <div :style="infoContentStyle">
             {{ reasoning }}
@@ -83,7 +83,7 @@
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>{{ isURLMode ? '🌐' : '📝' }}</span>
-            <span>{{ isURLMode ? 'Current URL' : 'Analyzed Content' }}</span>
+            <span>{{ isURLMode ? 'Aktualny URL' : 'Analizowana treść' }}</span>
           </h3>
           <div :style="{ ...infoContentStyle, fontStyle: isURLMode ? 'normal' : 'italic', fontFamily: isURLMode ? 'monospace' : 'inherit', fontSize: isURLMode ? '13px' : '14px', wordBreak: isURLMode ? 'break-all' : 'normal' }">
             {{ isURLMode ? contentPreview : `"${contentPreview}"` }}
@@ -94,7 +94,7 @@
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
             <span>💡</span>
-            <span>{{ isFakeNews ? 'Recommendation' : 'What You Can Do' }}</span>
+            <span>{{ isFakeNews ? 'Rekomendacja' : 'Co możesz zrobić' }}</span>
           </h3>
           <div :style="infoContentStyle">
             {{ recommendation }}
@@ -118,7 +118,7 @@
           @mouseenter="secondaryHover = true"
           @mouseleave="secondaryHover = false"
         >
-          Dismiss
+          Zamknij
         </button>
       </div>
     </div>
@@ -209,36 +209,36 @@ export default {
     },
     badgeText() {
       const status = this.contentStatus;
-      if (status === 'fake') return this.isURLMode ? 'Fake News URL' : 'Fake News';
-      if (status === 'true') return this.isURLMode ? 'Verified URL' : 'Verified';
-      if (status === 'unsure') return this.isURLMode ? 'Uncertain URL' : 'Uncertain';
-      return this.isURLMode ? 'Unknown URL' : 'Not In Database';
+      if (status === 'fake') return this.isURLMode ? 'URL fałszywych wiadomości' : 'Fałszywe wiadomości';
+      if (status === 'true') return this.isURLMode ? 'Zweryfikowany URL' : 'Zweryfikowane';
+      if (status === 'unsure') return this.isURLMode ? 'Niepewny URL' : 'Niepewne';
+      return this.isURLMode ? 'Nieznany URL' : 'Nie w bazie danych';
     },
     title() {
       const status = this.contentStatus;
       if (this.isURLMode) {
-        if (status === 'fake') return 'Warning: Fake News URL!';
-        if (status === 'true') return 'Verified Safe URL';
-        if (status === 'unsure') return 'Uncertain URL Status';
-        return 'URL Not In Database';
+        if (status === 'fake') return 'Ostrzeżenie: URL fałszywych wiadomości!';
+        if (status === 'true') return 'Zweryfikowany bezpieczny URL';
+        if (status === 'unsure') return 'Niepewny status URL';
+        return 'URL nie w bazie danych';
       }
-      if (status === 'fake') return 'Alert: Fake News!';
-      if (status === 'true') return 'Verified Content';
-      if (status === 'unsure') return 'Uncertain Status';
-      return 'Not In Database';
+      if (status === 'fake') return 'Alert: Fałszywe wiadomości!';
+      if (status === 'true') return 'Zweryfikowana treść';
+      if (status === 'unsure') return 'Niepewny status';
+      return 'Nie w bazie danych';
     },
     subtitle() {
       const status = this.contentStatus;
       if (this.isURLMode) {
-        if (status === 'fake') return 'Marked as fake news in our database';
-        if (status === 'true') return 'Confirmed as legitimate';
-        if (status === 'unsure') return 'Uncertain - verify before trusting';
-        return 'No information available';
+        if (status === 'fake') return 'Oznaczony jako fałszywe wiadomości w naszej bazie danych';
+        if (status === 'true') return 'Potwierdzony jako prawdziwy';
+        if (status === 'unsure') return 'Niepewny - zweryfikuj przed zaufaniem';
+        return 'Brak dostępnych informacji';
       }
-      if (status === 'fake') return 'Marked as fake news in our database';
-      if (status === 'true') return 'Confirmed as accurate';
-      if (status === 'unsure') return 'Uncertain - verify before trusting';
-      return 'No information available';
+      if (status === 'fake') return 'Oznaczony jako fałszywe wiadomości w naszej bazie danych';
+      if (status === 'true') return 'Potwierdzony jako dokładny';
+      if (status === 'unsure') return 'Niepewny - zweryfikuj przed zaufaniem';
+      return 'Brak dostępnych informacji';
     },
     matchedURL() {
       return this.result?.matchedUrl || '';
@@ -247,56 +247,56 @@ export default {
       const status = this.contentStatus;
       
       if (this.isURLMode) {
-        const matchInfo = this.matchedURL ? ` The matched URL is: ${this.matchedURL}.` : '';
+        const matchInfo = this.matchedURL ? ` Dopasowany URL to: ${this.matchedURL}.` : '';
         
         if (status === 'fake') {
-          return `This URL has been marked as fake news in our database with ${this.percentage}% similarity.${matchInfo} We strongly recommend not trusting this source or sharing content from it.`;
+          return `Ten URL został oznaczony jako fałszywe wiadomości w naszej bazie danych z ${this.percentage}% podobieństwem.${matchInfo} Zdecydowanie zalecamy nie ufać temu źródłu ani udostępniać treści z niego.`;
         } else if (status === 'true') {
-          return `This URL has been verified as a legitimate news source in our database with ${this.percentage}% similarity.${matchInfo} This is a trusted source of information.`;
+          return `Ten URL został zweryfikowany jako prawdziwe źródło wiadomości w naszej bazie danych z ${this.percentage}% podobieństwem.${matchInfo} To jest zaufane źródło informacji.`;
         } else if (status === 'unsure') {
-          return `We're uncertain about this URL (${this.percentage}% similarity).${matchInfo} The source is ambiguous or lacks sufficient verification. Please verify the credibility before trusting or sharing.`;
+          return `Nie jesteśmy pewni co do tego URL (${this.percentage}% podobieństwa).${matchInfo} Źródło jest niejednoznaczne lub brakuje wystarczającej weryfikacji. Proszę zweryfikować wiarygodność przed zaufaniem lub udostępnieniem.`;
         }
-        return 'This URL is not in our database. This doesn\'t mean it\'s trustworthy or untrustworthy - we simply don\'t have information about it. Always verify the credibility of sources before sharing personal information.';
+        return 'Ten URL nie znajduje się w naszej bazie danych. To nie oznacza, że jest godny zaufania lub niegodny - po prostu nie mamy o nim informacji. Zawsze weryfikuj wiarygodność źródeł przed udostępnieniem danych osobowych.';
       }
       
       if (status === 'fake') {
-        return `This content has been marked as fake news in our database with ${this.percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.`;
+        return `Ta treść została oznaczona jako fałszywe wiadomości w naszej bazie danych z ${this.percentage}% pewnością. Zdecydowanie zalecamy nie udostępniać ani nie wierzyć w te informacje bez weryfikacji z wiarygodnych źródeł.`;
       } else if (status === 'true') {
-        return `This content has been verified as legitimate with ${this.percentage}% confidence. Our database confirms this information as non-fake news.`;
+        return `Ta treść została zweryfikowana jako prawdziwa z ${this.percentage}% pewnością. Nasza baza danych potwierdza, że te informacje nie są fałszywymi wiadomościami.`;
       } else if (status === 'unsure') {
-        return `We're uncertain about this content (${this.percentage}% confidence). The information is ambiguous or lacks sufficient verification. Please check multiple reliable sources before sharing.`;
+        return `Nie jesteśmy pewni co do tej treści (${this.percentage}% pewności). Informacje są niejednoznaczne lub brakuje wystarczającej weryfikacji. Proszę sprawdzić wiele wiarygodnych źródeł przed udostępnieniem.`;
       }
-      return 'This content is not in our database. This doesn\'t mean it\'s true or false - we simply don\'t have information about it. Always verify information before sharing.';
+      return 'Ta treść nie znajduje się w naszej bazie danych. To nie oznacza, że jest prawdziwa lub fałszywa - po prostu nie mamy o niej informacji. Zawsze weryfikuj informacje przed udostępnieniem.';
     },
     recommendation() {
       const status = this.contentStatus;
       
       if (this.isURLMode) {
         if (status === 'fake') {
-          return 'Do not trust this source. Avoid sharing content from this URL and do not enter any sensitive information. Verify the URL carefully and consider using official, trusted news sources instead.';
+          return 'Nie ufaj temu źródłu. Unikaj udostępniania treści z tego URL i nie wprowadzaj żadnych wrażliwych informacji. Dokładnie zweryfikuj URL i rozważ użycie oficjalnych, zaufanych źródeł wiadomości.';
         } else if (status === 'true') {
-          return 'This appears to be a legitimate news source. However, always maintain healthy skepticism and cross-reference important information with multiple sources.';
+          return 'To wydaje się być prawdziwym źródłem wiadomości. Jednak zawsze zachowuj zdrowy sceptycyzm i sprawdzaj ważne informacje w wielu źródłach.';
         } else if (status === 'unsure') {
-          return 'Exercise caution with this source. Verify the URL carefully, check for HTTPS and spelling mistakes, and cross-reference any important information with trusted sources before sharing.';
+          return 'Zachowaj ostrożność z tym źródłem. Dokładnie zweryfikuj URL, sprawdź HTTPS i błędy pisowni, oraz sprawdź ważne informacje w zaufanych źródłach przed udostępnieniem.';
         }
-        return 'Always verify URLs before trusting content or entering personal information. Look for HTTPS, check the domain spelling, and be cautious of suspicious URLs.';
+        return 'Zawsze weryfikuj URL przed zaufaniem treści lub wprowadzeniem danych osobowych. Szukaj HTTPS, sprawdź pisownię domeny i zachowaj ostrożność wobec podejrzanych URL.';
       }
       
       if (status === 'fake') {
-        return 'Do not share this content. Verify it through multiple trusted news sources and look for official statements or fact-checking organizations before believing or spreading this information.';
+        return 'Nie udostępniaj tej treści. Zweryfikuj ją przez wiele zaufanych źródeł wiadomości i szukaj oficjalnych oświadczeń lub organizacji sprawdzających fakty przed uwierzeniem lub rozpowszechnianiem tych informacji.';
       } else if (status === 'true') {
-        return 'While this content appears verified as legitimate, always maintain healthy skepticism. Cross-reference with multiple sources when making important decisions.';
+        return 'Chociaż ta treść wydaje się zweryfikowana jako prawdziwa, zawsze zachowuj zdrowy sceptycyzm. Sprawdzaj informacje w wielu źródłach przy podejmowaniu ważnych decyzji.';
       } else if (status === 'unsure') {
-        return 'Exercise caution with this content. Verify through multiple independent and trusted sources before accepting or sharing this information.';
+        return 'Zachowaj ostrożność z tą treścią. Zweryfikuj przez wiele niezależnych i zaufanych źródeł przed zaakceptowaniem lub udostępnieniem tych informacji.';
       }
-      return 'Consider verifying this information through multiple trusted sources. Stay critical of what you read online and always check the credibility of sources.';
+      return 'Rozważ zweryfikowanie tych informacji przez wiele zaufanych źródeł. Zachowaj krytyczne podejście do tego, co czytasz online i zawsze sprawdzaj wiarygodność źródeł.';
     },
     primaryBtnText() {
       const status = this.contentStatus;
-      if (status === 'fake') return 'Understood';
-      if (status === 'true') return 'Got It';
-      if (status === 'unsure') return 'Noted';
-      return 'Got It';
+      if (status === 'fake') return 'Rozumiem';
+      if (status === 'true') return 'Rozumiem';
+      if (status === 'unsure') return 'Zanotowane';
+      return 'Rozumiem';
     },
     // Colors
     borderColor() {
