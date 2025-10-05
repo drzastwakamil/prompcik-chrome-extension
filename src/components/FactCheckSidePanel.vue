@@ -168,10 +168,13 @@ export default {
     },
     isFakeNews() {
       if (this.isURLMode) {
-        // In URL mode, consider it "flagged" if warning is true
-        return this.result?.warning === true;
+        // In URL mode, consider it "flagged" if warning is true OR status is fake OR similarity is high
+        return this.result?.warning === true || this.result?.status === 'fake' || (this.result?.similarity || 0) >= 0.8;
       }
-      return this.result?.flagged === true;
+      return this.result?.status === 'fake';
+    },
+    contentStatus() {
+      return this.result?.status || 'no_data';
     },
     percentage() {
       if (this.isURLMode) {
@@ -201,25 +204,44 @@ export default {
       return this.isFakeNews ? 'fnf-fake-news' : 'fnf-not-in-db';
     },
     badgeIcon() {
-      return this.isFakeNews ? '⚠️' : 'ℹ️';
+      if (this.isURLMode) {
+        return this.isFakeNews ? '⚠️' : 'ℹ️';
+      }
+      const status = this.contentStatus;
+      if (status === 'fake') return '⚠️';
+      if (status === 'true') return '✅';
+      if (status === 'unsure') return '❓';
+      return 'ℹ️';
     },
     badgeText() {
       if (this.isURLMode) {
         return this.isFakeNews ? 'Suspicious URL' : 'Safe URL';
       }
-      return this.isFakeNews ? 'Fake News' : 'Not Verified';
+      const status = this.contentStatus;
+      if (status === 'fake') return 'Fake News';
+      if (status === 'true') return 'Verified';
+      if (status === 'unsure') return 'Uncertain';
+      return 'Not Verified';
     },
     title() {
       if (this.isURLMode) {
         return this.isFakeNews ? 'Warning: Suspicious URL' : 'URL Checked';
       }
-      return this.isFakeNews ? 'Alert!' : 'Unknown Status';
+      const status = this.contentStatus;
+      if (status === 'fake') return 'Alert!';
+      if (status === 'true') return 'Verified Content';
+      if (status === 'unsure') return 'Uncertain Status';
+      return 'Unknown Status';
     },
     subtitle() {
       if (this.isURLMode) {
         return this.isFakeNews ? 'Similar to known malicious URL' : 'URL appears safe';
       }
-      return this.isFakeNews ? 'Flagged by our system' : 'Not in our database';
+      const status = this.contentStatus;
+      if (status === 'fake') return 'Flagged by our system';
+      if (status === 'true') return 'Confirmed as accurate';
+      if (status === 'unsure') return 'Needs verification';
+      return 'Not in our database';
     },
     matchedURL() {
       return this.result?.matchedUrl || '';
@@ -232,8 +254,13 @@ export default {
         return 'This URL does not match any known malicious URLs in our database. However, always verify the credibility of websites before sharing personal information.';
       }
       
-      if (this.isFakeNews) {
+      const status = this.contentStatus;
+      if (status === 'fake') {
         return `This content has been flagged as fake news by our system with ${this.percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.`;
+      } else if (status === 'true') {
+        return `This content has been verified as true with ${this.percentage}% confidence. Our system found reliable sources confirming this information.`;
+      } else if (status === 'unsure') {
+        return `We're uncertain about this content (${this.percentage}% confidence). The information is ambiguous or lacks sufficient verification. Please check multiple reliable sources before sharing.`;
       }
       return 'This content is not currently in our fact-checking database. This doesn\'t mean it\'s true or false - we simply don\'t have information about it.';
     },
@@ -245,20 +272,43 @@ export default {
         return 'Always verify URLs before clicking links or entering personal information. Look for HTTPS, check the domain spelling, and be cautious of shortened URLs.';
       }
       
-      if (this.isFakeNews) {
+      const status = this.contentStatus;
+      if (status === 'fake') {
         return 'Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.';
+      } else if (status === 'true') {
+        return 'While this content appears verified, always maintain healthy skepticism. Cross-reference with multiple sources when making important decisions.';
+      } else if (status === 'unsure') {
+        return 'Exercise caution with this content. Verify through multiple independent and trusted sources before accepting or sharing this information.';
       }
       return 'Consider verifying this information through multiple trusted sources. Stay critical of what you read online and check the credibility of the source.';
     },
     primaryBtnText() {
-      return this.isFakeNews ? 'Understood' : 'Got It';
+      const status = this.contentStatus;
+      if (status === 'fake') return 'Understood';
+      if (status === 'true') return 'Got It';
+      if (status === 'unsure') return 'Noted';
+      return 'Got It';
     },
     // Colors
     borderColor() {
-      return this.isFakeNews ? '#dc2626' : '#6b7280';
+      if (this.isURLMode) {
+        return this.isFakeNews ? '#dc2626' : '#3b82f6';
+      }
+      const status = this.contentStatus;
+      if (status === 'fake') return '#dc2626'; // red
+      if (status === 'true') return '#22c55e'; // green
+      if (status === 'unsure') return '#f59e0b'; // yellow/amber
+      return '#3b82f6'; // blue (no_data) - better contrast than gray
     },
     bgColor() {
-      return this.isFakeNews ? '#fef2f2' : '#f9fafb';
+      if (this.isURLMode) {
+        return this.isFakeNews ? '#fef2f2' : '#eff6ff';
+      }
+      const status = this.contentStatus;
+      if (status === 'fake') return '#fef2f2'; // red bg
+      if (status === 'true') return '#f0fdf4'; // green bg
+      if (status === 'unsure') return '#fffbeb'; // yellow/amber bg
+      return '#eff6ff'; // blue bg (no_data) - better contrast than gray
     },
     // Panel styles
     backdropStyle() {
@@ -291,13 +341,32 @@ export default {
       };
     },
     headerStyle() {
+      let bgGradient = 'linear-gradient(to bottom, #f9fafb, white)'; // default
+      
+      if (this.isURLMode) {
+        bgGradient = this.isFakeNews 
+          ? 'linear-gradient(to bottom, #fef2f2, white)' 
+          : 'linear-gradient(to bottom, #f9fafb, white)';
+      } else {
+        const status = this.contentStatus;
+        if (status === 'fake') {
+          bgGradient = 'linear-gradient(to bottom, #fef2f2, white)';
+        } else if (status === 'true') {
+          bgGradient = 'linear-gradient(to bottom, #f0fdf4, white)';
+        } else if (status === 'unsure') {
+          bgGradient = 'linear-gradient(to bottom, #fffbeb, white)';
+        } else {
+          bgGradient = 'linear-gradient(to bottom, #eff6ff, white)'; // blue gradient for no_data
+        }
+      }
+      
       return {
         padding: '24px',
         borderBottom: '1px solid #e5e7eb',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        background: this.isFakeNews ? 'linear-gradient(to bottom, #fef2f2, white)' : 'linear-gradient(to bottom, #f9fafb, white)'
+        background: bgGradient
       };
     },
     badgeStyle() {
@@ -408,7 +477,10 @@ export default {
         padding: '16px',
         borderRadius: '8px',
         borderLeft: `4px solid ${this.borderColor}`,
-        background: this.bgColor
+        background: this.bgColor,
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+        wordBreak: 'break-word'
       };
     },
     footerStyle() {

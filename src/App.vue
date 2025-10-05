@@ -182,10 +182,38 @@ function closeNotification() {
 
 // Selection mode
 function startFactCheckSelection() {
-  selectionMode.active = true;
-  selectionMode.prevCursor = document.body.style.cursor;
-  document.body.style.cursor = 'crosshair';
-  console.log('[Selection Mode] Started');
+  // Check if we have a result shown (side panel or highlight bubble)
+  const hasResultShown = sidePanel.visible || selectionMode.active;
+  
+  if (hasResultShown) {
+    // Reset state: close side panel and reset highlight to hover mode
+    console.log('[Selection Mode] Resetting state - clearing results');
+    
+    // Close side panel if open
+    if (sidePanel.visible) {
+      closeSidePanel();
+    }
+    
+    // Reset highlight to hover mode if it exists
+    if (factCheckHighlight.ref && factCheckHighlight.ref.resetToHoverMode) {
+      factCheckHighlight.ref.resetToHoverMode();
+    }
+    
+    // Stop selection mode
+    stopFactCheckSelection();
+    
+    // Restart selection mode
+    selectionMode.active = true;
+    selectionMode.prevCursor = document.body.style.cursor;
+    document.body.style.cursor = 'crosshair';
+    console.log('[Selection Mode] Restarted after reset');
+  } else {
+    // Normal start
+    selectionMode.active = true;
+    selectionMode.prevCursor = document.body.style.cursor;
+    document.body.style.cursor = 'crosshair';
+    console.log('[Selection Mode] Started');
+  }
 }
 
 function stopFactCheckSelection() {

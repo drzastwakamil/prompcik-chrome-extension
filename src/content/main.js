@@ -31,7 +31,11 @@ function mountApp() {
   });
   appComponentInstance = appInstance.mount(appContainer);
   
-  console.log('[App] Mounted successfully');
+  console.log('[App] Mounted successfully', {
+    hasComponentInstance: !!appComponentInstance,
+    hasShowSidePanel: !!(appComponentInstance && appComponentInstance.showSidePanel),
+    exposedMethods: appComponentInstance ? Object.keys(appComponentInstance).filter(k => typeof appComponentInstance[k] === 'function') : []
+  });
 }
 
 // Unmount the main app (internal function to avoid circular calls)
@@ -84,18 +88,31 @@ async function checkCurrentURL() {
     if (response && response.success && response.result) {
       const result = response.result;
       
-      // Show sidebar if warning is true (URL has high similarity)
-      if (result.warning === true) {
-        console.log('[URL Monitor] Warning detected, mounting app and showing sidebar');
+      // Show sidebar if URL is flagged as fake or has high similarity
+      const shouldWarn = result.status === 'fake' || result.warning === true || result.similarity >= 0.8;
+      
+      if (shouldWarn) {
+        console.log('[URL Monitor] Warning detected, mounting app and showing sidebar', { result });
         
         // Mount app if not already mounted
         if (!appInstance) {
           mountApp();
+          // Wait for next tick to ensure component is ready
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
         
         // Show sidebar through the app
+        console.log('[URL Monitor] Checking appComponentInstance:', {
+          exists: !!appComponentInstance,
+          hasMethod: !!(appComponentInstance && appComponentInstance.showSidePanel),
+          type: typeof appComponentInstance
+        });
+        
         if (appComponentInstance && appComponentInstance.showSidePanel) {
+          console.log('[URL Monitor] Calling showSidePanel with:', { result, url, mode: 'url' });
           appComponentInstance.showSidePanel(result, url, 'url');
+        } else {
+          console.error('[URL Monitor] Cannot show side panel - method not available');
         }
       } else {
         console.log('[URL Monitor] No warning, URL is safe');
