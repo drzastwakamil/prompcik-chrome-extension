@@ -383,7 +383,6 @@ const tailStyle = computed(() => {
     position: 'absolute',
     width: '0',
     height: '0',
-    transition: 'border-color 0.3s ease',
     left: `${tailLeft}px`
   };
   
