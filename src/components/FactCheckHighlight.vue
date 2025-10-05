@@ -169,17 +169,17 @@ const isVisible = computed(() => props.active && currentElement.value !== null);
 // Highlight color - changes based on mode and state
 const highlightColor = computed(() => {
   if (mode.value === 'hover') {
-    return '#3b82f6'; // blue for hover (same as validating)
+    return '#3b82f6'; // blue for hover
   }
   // Bubble mode
-  if (!result.value) return '#6366f1'; // blue loading
+  if (!result.value) return '#3b82f6'; // blue loading (same as hover)
   
   // Map status to colors
   const status = result.value.status;
   if (status === 'fake') return '#dc2626'; // red
   if (status === 'true') return '#22c55e'; // green
   if (status === 'unsure') return '#f59e0b'; // yellow/amber
-  if (status === 'no_data') return '#3b82f6'; // blue (better contrast)
+  if (status === 'no_data') return '#6b7280'; // gray
   
   return '#3b82f6'; // default blue
 });
@@ -256,7 +256,9 @@ const highlightBorderStyle = computed(() => {
     border: `${borderWidth}px solid ${highlightColor.value}`,
     borderRadius: mode.value === 'hover' ? '6px' : '8px',
     background: `${highlightColor.value}${mode.value === 'hover' ? '14' : '15'}`,
-    boxShadow: mode.value === 'bubble' ? `0 0 0 4px ${highlightColor.value}20` : 'none',
+    boxShadow: mode.value === 'hover' 
+      ? `0 0 0 3px ${highlightColor.value}20, 0 4px 12px ${highlightColor.value}30`
+      : `0 0 0 4px ${highlightColor.value}20`,
     transition: mode.value === 'bubble' 
       ? 'border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, border-radius 0.2s ease'
       : 'none',
@@ -447,7 +449,7 @@ const overlayStyle = computed(() => {
 // Background color based on state
 const backgroundColor = computed(() => {
   if (state.value === 'loading') {
-    return 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
+    return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'; // blue
   } else if (state.value === 'error') {
     return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
   } else if (state.value === 'result') {
@@ -459,11 +461,11 @@ const backgroundColor = computed(() => {
     } else if (status === 'unsure') {
       return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'; // yellow/amber
     } else if (status === 'no_data') {
-      return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'; // blue (better contrast)
+      return 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'; // gray
     }
     return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'; // default blue
   }
-  return 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
+  return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'; // blue
 });
 
 // Tail color - simplified to match highlight color
@@ -555,7 +557,7 @@ const learnMoreBtnStyle = computed(() => {
   if (status === 'fake') color = '#dc2626'; // red
   else if (status === 'true') color = '#16a34a'; // green
   else if (status === 'unsure') color = '#d97706'; // amber
-  else if (status === 'no_data') color = '#2563eb'; // blue
+  else if (status === 'no_data') color = '#4b5563'; // gray
   
   return {
     background: 'rgba(255,255,255,0.98)',
@@ -623,6 +625,10 @@ const onMouseMove = (e) => {
 
 const onClick = (e) => {
   if (!props.active) return;
+  
+  // Don't process clicks if we're already in bubble mode
+  // This prevents clicking through the overlay "hole" from re-triggering fact checking
+  if (mode.value === 'bubble') return;
   
   // Skip extension elements, images, and SVGs
   if (props.isExtensionElement(e.target) ||
