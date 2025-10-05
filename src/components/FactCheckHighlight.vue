@@ -663,6 +663,9 @@ const onClick = (e) => {
   // Transition from hover to bubble mode
   mode.value = 'bubble';
   
+  // Remove cursor enforcement CSS class when entering bubble mode
+  document.body.classList.remove('fnf-selection-mode-active');
+  
   // Calculate best position for bubble
   updateBubblePosition();
   
@@ -757,6 +760,9 @@ const resetToHoverMode = () => {
   analyzedText.value = '';
   currentElement.value = null;
   bubbleHeight.value = 0;
+  
+  // Restore cursor enforcement CSS class when returning to hover mode
+  document.body.classList.add('fnf-selection-mode-active');
 };
 
 // Lifecycle hooks

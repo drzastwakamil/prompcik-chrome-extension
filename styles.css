@@ -132,13 +132,13 @@
 }
 
 /* Robust cursor enforcement for highlighting mode */
-/* This ensures our crosshair cursor always takes precedence over website CSS */
+/* This ensures our magnifying glass cursor always takes precedence over website CSS */
 .fnf-selection-mode-active,
 .fnf-selection-mode-active *,
 .fnf-selection-mode-active *:hover,
 .fnf-selection-mode-active *:focus,
 .fnf-selection-mode-active *:active {
-  cursor: crosshair !important;
+  cursor: zoom-in !important;
 }
 
 /* Additional enforcement for common elements that websites often style */
@@ -153,13 +153,13 @@
 .fnf-selection-mode-active .button,
 .fnf-selection-mode-active .link,
 .fnf-selection-mode-active .clickable {
-  cursor: crosshair !important;
+  cursor: zoom-in !important;
 }
 
 /* Ensure cursor is enforced even on pseudo-elements */
 .fnf-selection-mode-active *::before,
 .fnf-selection-mode-active *::after {
-  cursor: crosshair !important;
+  cursor: zoom-in !important;
 }
 
 /* (removed) .fnf-processed highlight — auto discovery removed */
