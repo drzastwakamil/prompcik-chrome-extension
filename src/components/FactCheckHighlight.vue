@@ -179,8 +179,28 @@ const highlightColor = computed(() => {
   return '#3b82f6'; // default blue
 });
 
-// Page overlay style - full-page backdrop
+// Page overlay style - full-page backdrop with hole for highlighted element
 const pageOverlayStyle = computed(() => {
+  if (!currentElement.value) return {};
+  
+  // Calculate the hole coordinates (the highlighted element position with border offset)
+  const holeTop = Math.max(0, top.value - borderOffset);
+  const holeLeft = Math.max(0, left.value - borderOffset);
+  const holeRight = holeLeft + width.value + borderOffset * 2;
+  const holeBottom = holeTop + height.value + borderOffset * 2;
+  
+  // Create a clip-path that covers everything except the highlighted area
+  // Uses evenodd fill rule: outer rectangle (viewport) minus inner rectangle (hole)
+  const clipPath = `polygon(
+    evenodd,
+    0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+    ${holeLeft}px ${holeTop}px,
+    ${holeLeft}px ${holeBottom}px,
+    ${holeRight}px ${holeBottom}px,
+    ${holeRight}px ${holeTop}px,
+    ${holeLeft}px ${holeTop}px
+  )`;
+  
   return {
     position: 'fixed',
     top: '0',
@@ -191,6 +211,8 @@ const pageOverlayStyle = computed(() => {
     height: '100vh',
     background: 'rgba(0, 0, 0, 0.75)',
     backdropFilter: 'blur(4px)',
+    clipPath: clipPath,
+    WebkitClipPath: clipPath,
     zIndex: '999996',
     pointerEvents: 'auto',
     cursor: 'pointer',
@@ -612,37 +634,58 @@ watch(() => mode.value, (newMode) => {
   }
 });
 
-// Scroll prevention functions
-let originalBodyOverflow = '';
-let originalBodyPosition = '';
-let scrollY = 0;
+// Scroll prevention by consuming scroll events
+function preventScroll(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  return false;
+}
 
 function disableBodyScroll() {
-  // Save current scroll position and styles
-  scrollY = window.scrollY;
-  originalBodyOverflow = document.body.style.overflow;
-  originalBodyPosition = document.body.style.position;
+  // Prevent scroll via mouse wheel
+  window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+  // Prevent scroll via touch
+  window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+  // Prevent scroll via keyboard (arrow keys, page up/down, space)
+  window.addEventListener('keydown', preventScrollKeys, { passive: false, capture: true });
   
-  // Apply scroll lock
-  document.body.style.overflow = 'hidden';
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.width = '100%';
-  
-  console.log('[Scroll] Disabled body scroll');
+  console.log('[Scroll] Disabled scrolling via event blocking');
 }
 
 function enableBodyScroll() {
-  // Restore original styles
-  document.body.style.overflow = originalBodyOverflow;
-  document.body.style.position = originalBodyPosition;
-  document.body.style.top = '';
-  document.body.style.width = '';
+  // Remove scroll prevention listeners
+  window.removeEventListener('wheel', preventScroll, { capture: true });
+  window.removeEventListener('touchmove', preventScroll, { capture: true });
+  window.removeEventListener('keydown', preventScrollKeys, { capture: true });
   
-  // Restore scroll position
-  window.scrollTo(0, scrollY);
+  console.log('[Scroll] Enabled scrolling');
+}
+
+// Prevent scroll keys (arrows, page up/down, space, home, end)
+// But allow Escape key for closing
+const scrollKeys = {
+  32: true, // space
+  33: true, // page up
+  34: true, // page down
+  35: true, // end
+  36: true, // home
+  37: true, // left arrow
+  38: true, // up arrow
+  39: true, // right arrow
+  40: true  // down arrow
+};
+
+function preventScrollKeys(e) {
+  // Allow Escape key to work (keyCode 27)
+  if (e.keyCode === 27) {
+    return;
+  }
   
-  console.log('[Scroll] Enabled body scroll');
+  if (scrollKeys[e.keyCode]) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
 }
 
 // Expose methods for parent components to call
