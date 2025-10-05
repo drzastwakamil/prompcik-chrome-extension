@@ -7,16 +7,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const sizes = [16, 32, 48, 128];
-const svgPath = path.join(__dirname, '../icons/logo.svg');
+const logoPath = path.join(__dirname, '../icons/logo-tarcza.png');
 const iconsDir = path.join(__dirname, '../icons');
 
 async function generateIcons() {
-  const svgBuffer = fs.readFileSync(svgPath);
+  const logoBuffer = fs.readFileSync(logoPath);
   
   for (const size of sizes) {
     const outputPath = path.join(iconsDir, `icon${size}.png`);
     
-    await sharp(svgBuffer)
+    await sharp(logoBuffer)
       .resize(size, size)
       .png()
       .toFile(outputPath);

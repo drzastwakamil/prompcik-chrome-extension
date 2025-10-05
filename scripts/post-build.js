@@ -32,6 +32,12 @@ iconSizes.forEach(size => {
     join(distIconsDir, `icon${size}.png`)
   );
 });
+
+// Copy logo
+copyFileSync(
+  join(iconsDir, 'logo-tarcza.png'),
+  join(distIconsDir, 'logo-tarcza.png')
+);
 console.log('✓ Copied icons');
 
 console.log('✓ Build complete! Load the dist/ directory in Chrome to test the extension.');
