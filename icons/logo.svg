@@ -1,0 +1,32 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield background -->
+  <path d="M64 8C64 8 32 16 16 24C16 24 16 56 16 72C16 96 64 120 64 120C64 120 112 96 112 72C112 56 112 24 112 24C96 16 64 8 64 8Z" 
+        fill="#2563EB" 
+        stroke="#1E40AF" 
+        stroke-width="3"/>
+  
+  <!-- Inner shield highlight -->
+  <path d="M64 16C64 16 38 22 26 28C26 28 26 54 26 68C26 88 64 108 64 108C64 108 102 88 102 68C102 54 102 28 102 28C90 22 64 16 64 16Z" 
+        fill="#3B82F6" 
+        opacity="0.8"/>
+  
+  <!-- Checkmark/verification symbol -->
+  <path d="M52 64L60 72L78 48" 
+        stroke="white" 
+        stroke-width="8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Small star accent (top of shield) -->
+  <circle cx="64" cy="24" r="3" fill="white" opacity="0.9"/>
+  
+  <!-- Gradient overlay for depth -->
+  <defs>
+    <linearGradient id="shieldGradient" x1="64" y1="8" x2="64" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="white" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+  <path d="M64 8C64 8 32 16 16 24C16 24 16 56 16 72C16 96 64 120 64 120C64 120 112 96 112 72C112 56 112 24 112 24C96 16 64 8 64 8Z" 
+        fill="url(#shieldGradient)"/>
+</svg>

@@ -1,15 +1,18 @@
-# Fake News Filter - Chrome Extension
+# Tarcza Fact-Check - Chrome Extension
 
-A Chrome extension that helps users fact-check content on any webpage to identify potentially misleading information. **Now powered by Vue.js!**
+🛡️ **Ochrona przed dezinformacją** - rozszerzenie Chrome do weryfikacji treści w czasie rzeczywistym. 
+
+A Chrome extension that protects against disinformation by verifying content in real-time. Part of the Tarcza ecosystem connecting citizens, experts, and institutions to combat fake news. **Powered by Vue.js!**
 
 ## 🎯 Features
 
-- 🛡️ **Fact-check any content** - Click on any element to verify information
+- 🛡️ **Real-time fact-checking** - Click on any element to verify information instantly
 - 🎨 **Beautiful UI** - Modern, animated interface with smooth transitions
-- 🔍 **Element highlighting** - Visual feedback during selection
-- 📊 **Detailed results** - Confidence scores and detailed analysis
-- ⚡ **Fast & responsive** - Built with Vue.js for optimal performance
+- 🔍 **Smart element detection** - Intelligent content extraction and highlighting
+- 📊 **AI-powered analysis** - Confidence scores and detailed verification
+- ⚡ **Lightning fast** - Built with Vue.js for optimal performance
 - 🔧 **Draggable toolbar** - Floating toolbar for easy access
+- 🌐 **Integration with Tarcza platform** - Connect to the national fact-checking network
 
 ## 🚀 Quick Start
 
@@ -29,9 +32,10 @@ A Chrome extension that helps users fact-check content on any webpage to identif
 
 3. **Start using:**
    - Visit any website
-   - Click the toolbar's "Fact-check" button
-   - Select any text element
-   - Get instant fact-checking results!
+   - Click the extension icon or the toolbar's "Fact-check" button
+   - Select any text element on the page
+   - Get instant AI-powered fact-checking results!
+   - On first install, you'll see the Tarcza welcome page: https://tarcza-factcheck.vercel.app/
 
 ### For Developers
 

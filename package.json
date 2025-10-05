@@ -1,7 +1,7 @@
 {
-  "name": "fake-news-filter",
+  "name": "tarcza-factcheck",
   "version": "1.0.0",
-  "description": "Fact-check content on any webpage to identify potentially misleading information",
+  "description": "Ochrona przed dezinformacją - weryfikuj treści w czasie rzeczywistym",
   "type": "module",
   "scripts": {
     "dev": "npm run build && npm run watch",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
+    "sharp": "^0.34.4",
     "vite": "^5.2.0",
     "vite-plugin-web-extension": "^4.1.4"
   }

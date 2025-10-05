@@ -87,7 +87,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   
   chrome.contextMenus.create({
     id: 'analyze-selection',
-    title: 'Analyze with Fake News Filter',
+    title: 'Sprawdź z Tarcza Fact-Check',
     contexts: ['selection'],
   });
 });
