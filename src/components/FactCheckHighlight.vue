@@ -622,6 +622,19 @@ const onMouseMove = (e) => {
   currentElement.value = el;
 };
 
+// Block mousedown to prevent any click-related actions from starting
+const onMouseDown = (e) => {
+  if (!props.active) return;
+  if (mode.value === 'bubble') return;
+  
+  // Block mousedown for all non-extension elements in hover mode
+  if (!props.isExtensionElement(e.target)) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+};
+
 const onClick = (e) => {
   if (!props.active) return;
   
@@ -629,7 +642,15 @@ const onClick = (e) => {
   // This prevents clicking through the overlay "hole" from re-triggering fact checking
   if (mode.value === 'bubble') return;
   
+  // IMPORTANT: Prevent default and stop propagation FIRST
+  // This prevents any buttons/links from triggering their native actions
+  // Do this before any checks so we block ALL clicks in hover mode
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation(); // Also stop other listeners on the same element
+  
   // Skip extension elements, images, and SVGs
+  // If it's one of these, we just blocked the click but don't process it
   if (props.isExtensionElement(e.target) ||
       e.target.tagName === 'IMG' || 
       e.target.tagName === 'image' || 
@@ -638,9 +659,6 @@ const onClick = (e) => {
       e.target instanceof SVGElement) {
     return;
   }
-  
-  e.preventDefault();
-  e.stopPropagation();
   
   // Transition from hover to bubble mode
   mode.value = 'bubble';
@@ -745,6 +763,7 @@ const resetToHoverMode = () => {
 onMounted(() => {
   if (props.active) {
     window.addEventListener('mousemove', onMouseMove, { capture: true, passive: true });
+    window.addEventListener('mousedown', onMouseDown, { capture: true });
     window.addEventListener('click', onClick, { capture: true });
     window.addEventListener('keydown', onKeyDown, { capture: true });
   }
@@ -752,6 +771,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMouseMove, { capture: true });
+  window.removeEventListener('mousedown', onMouseDown, { capture: true });
   window.removeEventListener('click', onClick, { capture: true });
   window.removeEventListener('keydown', onKeyDown, { capture: true });
   // Ensure scroll is restored on unmount
@@ -762,10 +782,12 @@ onBeforeUnmount(() => {
 watch(() => props.active, (newActive) => {
   if (newActive) {
     window.addEventListener('mousemove', onMouseMove, { capture: true, passive: true });
+    window.addEventListener('mousedown', onMouseDown, { capture: true });
     window.addEventListener('click', onClick, { capture: true });
     window.addEventListener('keydown', onKeyDown, { capture: true });
   } else {
     window.removeEventListener('mousemove', onMouseMove, { capture: true });
+    window.removeEventListener('mousedown', onMouseDown, { capture: true });
     window.removeEventListener('click', onClick, { capture: true });
     window.removeEventListener('keydown', onKeyDown, { capture: true });
     currentElement.value = null;
