@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build && npm run watch",
-    "watch": "npm run watch:content & npm run watch:popup",
+    "watch": "npm run watch:content & npm run watch:background",
     "watch:content": "vite build --config vite.config.js --watch --mode development",
-    "watch:popup": "vite build --config vite.config.popup.js --watch --mode development",
-    "build": "npm run clean && npm run build:content && npm run build:popup && node scripts/post-build.js",
+    "watch:background": "vite build --config vite.config.background.js --watch --mode development",
+    "build": "npm run clean && npm run build:content && npm run build:background && node scripts/post-build.js",
     "build:content": "vite build --config vite.config.js",
-    "build:popup": "vite build --config vite.config.popup.js",
+    "build:background": "vite build --config vite.config.background.js",
     "clean": "rm -rf dist && mkdir -p dist",
     "preview": "vite preview"
   },
