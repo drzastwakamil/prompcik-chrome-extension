@@ -87,6 +87,16 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Handle extension icon click
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    await chrome.tabs.sendMessage(tab.id, { action: 'showToolbar' });
+    console.log('Toolbar shown on tab:', tab.id);
+  } catch (error) {
+    console.error('Error showing toolbar:', error);
+  }
+});
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== 'analyze-selection') return;
   try {
