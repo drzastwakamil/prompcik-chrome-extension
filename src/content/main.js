@@ -55,11 +55,14 @@ function performUnmount() {
     appContainer.remove();
   }
   
+  // Clean up all CSS classes that might be left behind
+  document.body.classList.remove('fnf-selection-mode-active');
+  
   appInstance = null;
   appContainer = null;
   appComponentInstance = null;
   
-  console.log('[App] Unmounted');
+  console.log('[App] Unmounted and CSS classes cleaned');
 }
 
 // URL monitoring for automatic checks
@@ -74,8 +77,24 @@ async function checkCurrentURL() {
     return;
   }
   
-  console.log('[URL Monitor] Checking URL:', url);
+  console.log('[URL Monitor] URL changed, remounting app:', url);
   currentCheckedURL = url;
+  
+  // Always clean up CSS classes first
+  document.body.classList.remove('fnf-selection-mode-active');
+  
+  // Always remount app on URL change to refresh state
+  if (appInstance) {
+    console.log('[URL Monitor] Unmounting existing app');
+    performUnmount();
+  }
+  
+  // Mount fresh app instance
+  console.log('[URL Monitor] Mounting fresh app');
+  mountApp();
+  
+  // Wait for app to be ready
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   try {
     const response = await chrome.runtime.sendMessage({ 
@@ -92,14 +111,7 @@ async function checkCurrentURL() {
       const shouldWarn = result.status === 'fake' || result.warning === true || result.similarity >= 0.8;
       
       if (shouldWarn) {
-        console.log('[URL Monitor] Warning detected, mounting app and showing sidebar', { result });
-        
-        // Mount app if not already mounted
-        if (!appInstance) {
-          mountApp();
-          // Wait for next tick to ensure component is ready
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
+        console.log('[URL Monitor] Warning detected, showing sidebar', { result });
         
         // Show sidebar through the app
         console.log('[URL Monitor] Checking appComponentInstance:', {
@@ -165,6 +177,19 @@ function startURLMonitoring() {
   console.log('[URL Monitor] Started monitoring');
 }
 
+// Function to manually remount app (useful for debugging or manual refresh)
+function remountApp() {
+  console.log('[Manual] Remounting app');
+  
+  // Clean up CSS classes first
+  document.body.classList.remove('fnf-selection-mode-active');
+  
+  if (appInstance) {
+    performUnmount();
+  }
+  mountApp();
+}
+
 // Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'showToolbar') {
@@ -176,6 +201,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return false;
   }
+  
+  if (request.action === 'remountApp') {
+    try {
+      remountApp();
+      sendResponse({ success: true });
+    } catch (error) {
+      sendResponse({ success: false, error: error.message });
+    }
+    return false;
+  }
+  
   return false;
 });
 
