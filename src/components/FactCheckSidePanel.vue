@@ -38,19 +38,19 @@
       
       <!-- Body -->
       <div :style="bodyStyle">
-        <!-- Confidence Circle (for fake news) -->
-        <div v-if="isFakeNews" :style="percentageDisplayStyle">
+        <!-- Confidence Circle (shown for all statuses except no_data) -->
+        <div v-if="contentStatus !== 'no_data'" :style="percentageDisplayStyle">
           <div :style="percentageCircleStyle">
             {{ percentage }}%
           </div>
-          <div :style="percentageLabelStyle">Confidence Level</div>
+          <div :style="percentageLabelStyle">{{ isURLMode ? 'Similarity Level' : 'Confidence Level' }}</div>
         </div>
         
         <!-- What This Means -->
         <div :style="infoSectionStyle">
           <h3 :style="infoTitleStyle">
-            <span>{{ isFakeNews ? '🔍' : '📋' }}</span>
-            <span>{{ isURLMode ? 'URL Analysis' : (isFakeNews ? 'What This Means' : 'Database Status') }}</span>
+            <span>{{ isURLMode ? '🌐' : '🔍' }}</span>
+            <span>{{ isURLMode ? 'URL Analysis' : 'Content Analysis' }}</span>
           </h3>
           <div :style="infoContentStyle">
             {{ mainMessage }}
@@ -167,10 +167,7 @@ export default {
       return this.mode === 'url';
     },
     isFakeNews() {
-      if (this.isURLMode) {
-        // In URL mode, consider it "flagged" if warning is true OR status is fake OR similarity is high
-        return this.result?.warning === true || this.result?.status === 'fake' || (this.result?.similarity || 0) >= 0.8;
-      }
+      // Only return true if status is explicitly "fake"
       return this.result?.status === 'fake';
     },
     contentStatus() {
@@ -204,9 +201,6 @@ export default {
       return this.isFakeNews ? 'fnf-fake-news' : 'fnf-not-in-db';
     },
     badgeIcon() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? '⚠️' : 'ℹ️';
-      }
       const status = this.contentStatus;
       if (status === 'fake') return '⚠️';
       if (status === 'true') return '✅';
@@ -214,73 +208,88 @@ export default {
       return 'ℹ️';
     },
     badgeText() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? 'Suspicious URL' : 'Safe URL';
-      }
       const status = this.contentStatus;
-      if (status === 'fake') return 'Fake News';
-      if (status === 'true') return 'Verified';
-      if (status === 'unsure') return 'Uncertain';
-      return 'Not Verified';
+      if (status === 'fake') return this.isURLMode ? 'Fake News URL' : 'Fake News';
+      if (status === 'true') return this.isURLMode ? 'Verified URL' : 'Verified';
+      if (status === 'unsure') return this.isURLMode ? 'Uncertain URL' : 'Uncertain';
+      return this.isURLMode ? 'Unknown URL' : 'Not In Database';
     },
     title() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? 'Warning: Suspicious URL' : 'URL Checked';
-      }
       const status = this.contentStatus;
-      if (status === 'fake') return 'Alert!';
+      if (this.isURLMode) {
+        if (status === 'fake') return 'Warning: Fake News URL!';
+        if (status === 'true') return 'Verified Safe URL';
+        if (status === 'unsure') return 'Uncertain URL Status';
+        return 'URL Not In Database';
+      }
+      if (status === 'fake') return 'Alert: Fake News!';
       if (status === 'true') return 'Verified Content';
       if (status === 'unsure') return 'Uncertain Status';
-      return 'Unknown Status';
+      return 'Not In Database';
     },
     subtitle() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? 'Similar to known malicious URL' : 'URL appears safe';
-      }
       const status = this.contentStatus;
-      if (status === 'fake') return 'Flagged by our system';
+      if (this.isURLMode) {
+        if (status === 'fake') return 'Marked as fake news in our database';
+        if (status === 'true') return 'Confirmed as legitimate';
+        if (status === 'unsure') return 'Uncertain - verify before trusting';
+        return 'No information available';
+      }
+      if (status === 'fake') return 'Marked as fake news in our database';
       if (status === 'true') return 'Confirmed as accurate';
-      if (status === 'unsure') return 'Needs verification';
-      return 'Not in our database';
+      if (status === 'unsure') return 'Uncertain - verify before trusting';
+      return 'No information available';
     },
     matchedURL() {
       return this.result?.matchedUrl || '';
     },
     mainMessage() {
+      const status = this.contentStatus;
+      
       if (this.isURLMode) {
-        if (this.isFakeNews) {
-          return `This URL has ${this.percentage}% similarity with a known malicious URL in our database. The matched URL is: ${this.matchedURL}. Please exercise caution and verify the source before proceeding.`;
+        const matchInfo = this.matchedURL ? ` The matched URL is: ${this.matchedURL}.` : '';
+        
+        if (status === 'fake') {
+          return `This URL has been marked as fake news in our database with ${this.percentage}% similarity.${matchInfo} We strongly recommend not trusting this source or sharing content from it.`;
+        } else if (status === 'true') {
+          return `This URL has been verified as a legitimate news source in our database with ${this.percentage}% similarity.${matchInfo} This is a trusted source of information.`;
+        } else if (status === 'unsure') {
+          return `We're uncertain about this URL (${this.percentage}% similarity).${matchInfo} The source is ambiguous or lacks sufficient verification. Please verify the credibility before trusting or sharing.`;
         }
-        return 'This URL does not match any known malicious URLs in our database. However, always verify the credibility of websites before sharing personal information.';
+        return 'This URL is not in our database. This doesn\'t mean it\'s trustworthy or untrustworthy - we simply don\'t have information about it. Always verify the credibility of sources before sharing personal information.';
       }
       
-      const status = this.contentStatus;
       if (status === 'fake') {
-        return `This content has been flagged as fake news by our system with ${this.percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.`;
+        return `This content has been marked as fake news in our database with ${this.percentage}% confidence. We strongly recommend not sharing or believing this information without verification from reliable sources.`;
       } else if (status === 'true') {
-        return `This content has been verified as true with ${this.percentage}% confidence. Our system found reliable sources confirming this information.`;
+        return `This content has been verified as legitimate with ${this.percentage}% confidence. Our database confirms this information as non-fake news.`;
       } else if (status === 'unsure') {
         return `We're uncertain about this content (${this.percentage}% confidence). The information is ambiguous or lacks sufficient verification. Please check multiple reliable sources before sharing.`;
       }
-      return 'This content is not currently in our fact-checking database. This doesn\'t mean it\'s true or false - we simply don\'t have information about it.';
+      return 'This content is not in our database. This doesn\'t mean it\'s true or false - we simply don\'t have information about it. Always verify information before sharing.';
     },
     recommendation() {
+      const status = this.contentStatus;
+      
       if (this.isURLMode) {
-        if (this.isFakeNews) {
-          return 'Do not enter sensitive information on this website. Verify the URL carefully, check for spelling mistakes, and consider using official sources or bookmarks instead.';
+        if (status === 'fake') {
+          return 'Do not trust this source. Avoid sharing content from this URL and do not enter any sensitive information. Verify the URL carefully and consider using official, trusted news sources instead.';
+        } else if (status === 'true') {
+          return 'This appears to be a legitimate news source. However, always maintain healthy skepticism and cross-reference important information with multiple sources.';
+        } else if (status === 'unsure') {
+          return 'Exercise caution with this source. Verify the URL carefully, check for HTTPS and spelling mistakes, and cross-reference any important information with trusted sources before sharing.';
         }
-        return 'Always verify URLs before clicking links or entering personal information. Look for HTTPS, check the domain spelling, and be cautious of shortened URLs.';
+        return 'Always verify URLs before trusting content or entering personal information. Look for HTTPS, check the domain spelling, and be cautious of suspicious URLs.';
       }
       
-      const status = this.contentStatus;
       if (status === 'fake') {
-        return 'Before sharing this content, verify it through multiple trusted news sources. Look for official statements or fact-checking organizations.';
+        return 'Do not share this content. Verify it through multiple trusted news sources and look for official statements or fact-checking organizations before believing or spreading this information.';
       } else if (status === 'true') {
-        return 'While this content appears verified, always maintain healthy skepticism. Cross-reference with multiple sources when making important decisions.';
+        return 'While this content appears verified as legitimate, always maintain healthy skepticism. Cross-reference with multiple sources when making important decisions.';
       } else if (status === 'unsure') {
         return 'Exercise caution with this content. Verify through multiple independent and trusted sources before accepting or sharing this information.';
       }
-      return 'Consider verifying this information through multiple trusted sources. Stay critical of what you read online and check the credibility of the source.';
+      return 'Consider verifying this information through multiple trusted sources. Stay critical of what you read online and always check the credibility of sources.';
     },
     primaryBtnText() {
       const status = this.contentStatus;
@@ -291,24 +300,18 @@ export default {
     },
     // Colors
     borderColor() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? '#dc2626' : '#3b82f6';
-      }
       const status = this.contentStatus;
       if (status === 'fake') return '#dc2626'; // red
       if (status === 'true') return '#22c55e'; // green
       if (status === 'unsure') return '#f59e0b'; // yellow/amber
-      return '#3b82f6'; // blue (no_data) - better contrast than gray
+      return '#6b7280'; // gray (no_data)
     },
     bgColor() {
-      if (this.isURLMode) {
-        return this.isFakeNews ? '#fef2f2' : '#eff6ff';
-      }
       const status = this.contentStatus;
       if (status === 'fake') return '#fef2f2'; // red bg
       if (status === 'true') return '#f0fdf4'; // green bg
       if (status === 'unsure') return '#fffbeb'; // yellow/amber bg
-      return '#eff6ff'; // blue bg (no_data) - better contrast than gray
+      return '#f9fafb'; // gray bg (no_data)
     },
     // Panel styles
     backdropStyle() {
@@ -341,23 +344,15 @@ export default {
       };
     },
     headerStyle() {
-      let bgGradient = 'linear-gradient(to bottom, #f9fafb, white)'; // default
+      const status = this.contentStatus;
+      let bgGradient = 'linear-gradient(to bottom, #f9fafb, white)'; // default gray for no_data
       
-      if (this.isURLMode) {
-        bgGradient = this.isFakeNews 
-          ? 'linear-gradient(to bottom, #fef2f2, white)' 
-          : 'linear-gradient(to bottom, #f9fafb, white)';
-      } else {
-        const status = this.contentStatus;
-        if (status === 'fake') {
-          bgGradient = 'linear-gradient(to bottom, #fef2f2, white)';
-        } else if (status === 'true') {
-          bgGradient = 'linear-gradient(to bottom, #f0fdf4, white)';
-        } else if (status === 'unsure') {
-          bgGradient = 'linear-gradient(to bottom, #fffbeb, white)';
-        } else {
-          bgGradient = 'linear-gradient(to bottom, #eff6ff, white)'; // blue gradient for no_data
-        }
+      if (status === 'fake') {
+        bgGradient = 'linear-gradient(to bottom, #fef2f2, white)'; // red
+      } else if (status === 'true') {
+        bgGradient = 'linear-gradient(to bottom, #f0fdf4, white)'; // green
+      } else if (status === 'unsure') {
+        bgGradient = 'linear-gradient(to bottom, #fffbeb, white)'; // yellow
       }
       
       return {
@@ -431,19 +426,19 @@ export default {
     },
     percentageCircleStyle() {
       return {
-        width: '160px',
-        height: '160px',
+        width: '120px',
+        height: '120px',
         borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         margin: '0 auto 16px',
-        fontSize: '56px',
-        fontWeight: '800',
-        border: `12px solid ${this.borderColor}`,
+        fontSize: '36px',
+        fontWeight: '700',
+        border: `8px solid ${this.borderColor}`,
         background: 'white',
         color: this.borderColor,
-        boxShadow: `0 0 0 8px ${this.bgColor}`
+        boxShadow: `0 0 0 6px ${this.bgColor}`
       };
     },
     percentageLabelStyle() {

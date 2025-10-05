@@ -142,6 +142,7 @@ const learnMoreHover = ref(false);
 const borderOffset = 4;
 const overlayWidth = 480;
 const tailHeight = 16;
+const minMargin = 10; // Minimum margin from viewport edges
 
 // Track element bounding (same tracking for both hover and bubble!)
 const { 
@@ -157,6 +158,10 @@ const {
 
 // Track window size
 const { width: windowWidth, height: windowHeight } = useWindowSize();
+
+// Bubble positioning state
+const bubblePosition = ref('bottom'); // 'top', 'bottom', 'middle'
+const bubbleHeight = ref(0); // Track actual bubble height
 
 // Visibility
 const isVisible = computed(() => props.active && currentElement.value !== null);
@@ -259,57 +264,164 @@ const highlightBorderStyle = computed(() => {
   };
 });
 
-// Calculate bubble left position
+// Calculate available space in each direction
+const availableSpace = computed(() => {
+  const highlightTop = top.value - borderOffset;
+  const highlightLeft = left.value - borderOffset;
+  const highlightBottom = highlightTop + height.value + borderOffset * 2;
+  const highlightRight = highlightLeft + width.value + borderOffset * 2;
+  
+  return {
+    top: highlightTop - minMargin,
+    bottom: windowHeight.value - highlightBottom - minMargin,
+    left: highlightLeft - minMargin,
+    right: windowWidth.value - highlightRight - minMargin
+  };
+});
+
+// Determine best bubble position based on available space
+const calculateBestPosition = () => {
+  const space = availableSpace.value;
+  const estimatedBubbleHeight = bubbleHeight.value || 200; // Use actual or estimate
+  
+  // Priority: bottom > top > middle
+  // Check if bubble fits below
+  if (space.bottom >= estimatedBubbleHeight) {
+    return 'bottom';
+  }
+  
+  // Check if bubble fits above
+  if (space.top >= estimatedBubbleHeight) {
+    return 'top';
+  }
+  
+  // If neither top nor bottom has enough space, position in middle (vertically centered)
+  return 'middle';
+};
+
+// Calculate bubble left position (centered horizontally on the highlight)
 const bubbleLeftPosition = computed(() => {
   const highlightCenterX = width.value / 2;
   let bubbleLeft = highlightCenterX - (overlayWidth / 2);
   
   // Calculate absolute position in viewport to check bounds
   const absoluteBubbleLeft = left.value - borderOffset + bubbleLeft;
-  const margin = 10;
   
-  // Adjust if bubble would go off screen
-  if (absoluteBubbleLeft < margin) {
-    bubbleLeft = margin - (left.value - borderOffset);
-  } else if (absoluteBubbleLeft + overlayWidth > windowWidth.value - margin) {
-    bubbleLeft = (windowWidth.value - margin - overlayWidth) - (left.value - borderOffset);
+  // Adjust if bubble would go off screen horizontally
+  if (absoluteBubbleLeft < minMargin) {
+    bubbleLeft = minMargin - (left.value - borderOffset);
+  } else if (absoluteBubbleLeft + overlayWidth > windowWidth.value - minMargin) {
+    bubbleLeft = (windowWidth.value - minMargin - overlayWidth) - (left.value - borderOffset);
   }
   
   return bubbleLeft;
 });
 
-// Bubble wrapper positioned below the highlight
-const bubbleWrapperStyle = computed(() => {
-  const gap = tailHeight + 16;
+// Calculate bubble top position for middle placement (fixed position in viewport)
+const bubbleTopPositionMiddle = computed(() => {
+  const estimatedBubbleHeight = bubbleHeight.value || 200;
+  const highlightTop = top.value - borderOffset;
   
-  return {
-    position: 'absolute',
-    top: `${height.value + borderOffset * 2 + gap}px`,
-    left: `${bubbleLeftPosition.value}px`,
-    width: `${overlayWidth}px`,
-    pointerEvents: 'none',
-    zIndex: '1'
-  };
+  // Position bubble at a fixed vertical position in viewport (centered or from top)
+  // Calculate the target position in viewport coordinates
+  let targetViewportTop;
+  
+  // Try to center in viewport
+  const viewportCenter = windowHeight.value / 2;
+  targetViewportTop = viewportCenter - (estimatedBubbleHeight / 2);
+  
+  // Ensure it stays within margins
+  if (targetViewportTop < minMargin) {
+    targetViewportTop = minMargin;
+  } else if (targetViewportTop + estimatedBubbleHeight > windowHeight.value - minMargin) {
+    targetViewportTop = windowHeight.value - minMargin - estimatedBubbleHeight;
+  }
+  
+  // Convert from viewport coordinates to position relative to the highlight container
+  const bubbleTop = targetViewportTop - highlightTop;
+  
+  return bubbleTop;
 });
 
-// Tail positioned to point at the center of the highlight
+// Bubble wrapper positioned dynamically based on best position
+const bubbleWrapperStyle = computed(() => {
+  const gap = tailHeight + 16;
+  const pos = bubblePosition.value;
+  
+  let style = {
+    position: 'absolute',
+    pointerEvents: 'none',
+    zIndex: '1',
+    overflow: 'visible', // Ensure tail is not clipped
+    left: `${bubbleLeftPosition.value}px`,
+    width: `${overlayWidth}px`
+  };
+  
+  if (pos === 'bottom') {
+    // Position below the highlight
+    style.top = `${height.value + borderOffset * 2 + gap}px`;
+  } else if (pos === 'top') {
+    // Position above the highlight
+    style.bottom = `${height.value + borderOffset * 2 + gap}px`;
+  } else if (pos === 'middle') {
+    // Position vertically centered in viewport
+    style.top = `${bubbleTopPositionMiddle.value}px`;
+  }
+  
+  return style;
+});
+
+// Tail positioned and oriented based on bubble position
 const tailStyle = computed(() => {
+  const pos = bubblePosition.value;
   const highlightCenterX = width.value / 2;
   const tailLeft = highlightCenterX - bubbleLeftPosition.value;
   
-  return {
+  let style = {
     position: 'absolute',
-    top: '0px',
-    left: `${tailLeft}px`,
-    transform: 'translateX(-50%) translateY(-100%)',
     width: '0',
     height: '0',
-    borderLeft: `${tailHeight}px solid transparent`,
-    borderRight: `${tailHeight}px solid transparent`,
-    borderBottom: `${tailHeight}px solid ${tailColor.value}`,
-    filter: 'drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.15))',
-    transition: 'border-bottom-color 0.3s ease'
+    transition: 'border-color 0.3s ease',
+    left: `${tailLeft}px`
   };
+  
+  // Determine tail direction based on position mode
+  let tailPointsUp = true; // default: tail points up
+  
+  if (pos === 'bottom') {
+    // Bubble is below highlight, tail points up
+    tailPointsUp = true;
+  } else if (pos === 'top') {
+    // Bubble is above highlight, tail points down
+    tailPointsUp = false;
+  } else if (pos === 'middle') {
+    // For middle mode, check if bubble is above or below the highlight
+    const highlightTop = top.value - borderOffset;
+    const highlightCenterY = highlightTop + (height.value + borderOffset * 2) / 2;
+    const bubbleTop = highlightTop + bubbleTopPositionMiddle.value;
+    const bubbleCenterY = bubbleTop + (bubbleHeight.value || 200) / 2;
+    
+    // If bubble center is above highlight center, tail points down
+    tailPointsUp = bubbleCenterY > highlightCenterY;
+  }
+  
+  if (tailPointsUp) {
+    // Tail points up (bubble is below highlight)
+    style.top = `0px`;
+    style.transform = 'translateX(-50%) translateY(-100%)';
+    style.borderLeft = `${tailHeight}px solid transparent`;
+    style.borderRight = `${tailHeight}px solid transparent`;
+    style.borderBottom = `${tailHeight}px solid ${tailColor.value}`;
+  } else {
+    // Tail points down (bubble is above highlight)
+    style.bottom = `-32px`;
+    style.transform = 'translateX(-50%) translateY(100%)';
+    style.borderLeft = `${tailHeight}px solid transparent`;
+    style.borderRight = `${tailHeight}px solid transparent`;
+    style.borderTop = `${tailHeight}px solid ${tailColor.value}`;
+  }
+  
+  return style;
 });
 
 // Overlay style
@@ -327,7 +439,8 @@ const overlayStyle = computed(() => {
     boxSizing: 'border-box',
     pointerEvents: 'auto',
     backdropFilter: 'blur(10px)',
-    transition: 'background 0.3s ease'
+    transition: 'background 0.3s ease',
+    overflow: 'visible' // Ensure tail is not clipped
   };
 });
 
@@ -353,14 +466,9 @@ const backgroundColor = computed(() => {
   return 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)';
 });
 
-// Tail color
+// Tail color - simplified to match highlight color
 const tailColor = computed(() => {
-  const bg = backgroundColor.value;
-  if (bg.includes('gradient')) {
-    const match = bg.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\([^)]+\)|rgba\([^)]+\)/);
-    return match ? match[0] : '#6366f1';
-  }
-  return bg;
+  return highlightColor.value;
 });
 
 // Result computed properties
@@ -532,6 +640,9 @@ const onClick = (e) => {
   // Transition from hover to bubble mode
   mode.value = 'bubble';
   
+  // Calculate best position for bubble
+  updateBubblePosition();
+  
   // Emit element selected
   emit('element-selected', e.target);
 };
@@ -551,6 +662,33 @@ const onKeyDown = (e) => {
   }
 };
 
+// Update bubble position based on available space
+const updateBubblePosition = () => {
+  bubblePosition.value = calculateBestPosition();
+  console.log('[Bubble] Position calculated:', bubblePosition.value);
+  
+  // Schedule bubble measurement after render
+  setTimeout(() => {
+    measureBubbleHeight();
+  }, 50);
+};
+
+// Measure actual bubble height once rendered
+const measureBubbleHeight = () => {
+  if (bubbleContainer.value) {
+    const rect = bubbleContainer.value.getBoundingClientRect();
+    bubbleHeight.value = rect.height;
+    console.log('[Bubble] Measured height:', bubbleHeight.value);
+    
+    // Recalculate position if needed based on actual height
+    const newPosition = calculateBestPosition();
+    if (newPosition !== bubblePosition.value) {
+      console.log('[Bubble] Repositioning from', bubblePosition.value, 'to', newPosition);
+      bubblePosition.value = newPosition;
+    }
+  }
+};
+
 // Methods - exposed for parent to call
 const setState_Loading = (message = 'Fact checking…') => {
   state.value = 'loading';
@@ -562,6 +700,11 @@ const setState_Result = (resultData, text) => {
   state.value = 'result';
   result.value = resultData;
   analyzedText.value = text;
+  
+  // Remeasure and reposition after content changes
+  setTimeout(() => {
+    measureBubbleHeight();
+  }, 100);
 };
 
 const setState_Error = (message) => {
@@ -576,6 +719,7 @@ const onClose = () => {
   result.value = null;
   analyzedText.value = '';
   currentElement.value = null;
+  bubbleHeight.value = 0;
   emit('close');
 };
 
@@ -589,6 +733,7 @@ const resetToHoverMode = () => {
   result.value = null;
   analyzedText.value = '';
   currentElement.value = null;
+  bubbleHeight.value = 0;
 };
 
 // Lifecycle hooks
@@ -629,8 +774,25 @@ watch(() => props.active, (newActive) => {
 watch(() => mode.value, (newMode) => {
   if (newMode === 'bubble') {
     disableBodyScroll();
+    updateBubblePosition();
   } else {
     enableBodyScroll();
+  }
+});
+
+// Watch for window size changes to reposition bubble
+watch([windowWidth, windowHeight], () => {
+  if (mode.value === 'bubble') {
+    console.log('[Bubble] Window resized, recalculating position');
+    updateBubblePosition();
+  }
+});
+
+// Watch for element position changes (scroll, etc.)
+watch([top, left, width, height], () => {
+  if (mode.value === 'bubble') {
+    // Debounce to avoid too many recalculations
+    updateBubblePosition();
   }
 });
 

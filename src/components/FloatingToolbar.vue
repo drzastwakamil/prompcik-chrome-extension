@@ -59,7 +59,7 @@ export default {
         top: `${this.position.top}px`,
         right: this.position.right !== null ? `${this.position.right}px` : 'auto',
         left: this.position.left !== null ? `${this.position.left}px` : 'auto',
-        zIndex: '999999'
+        zIndex: '2147483647' // Maximum z-index value to ensure always on top
       };
     }
   },
