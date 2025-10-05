@@ -1,5 +1,5 @@
 
-.fnf-toolbar[data-v-dab9c0ec] {
+.fnf-toolbar[data-v-7df4a799] {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   align-items: center;
@@ -15,10 +15,10 @@
   user-select: none;
   transition: box-shadow 0.2s ease;
 }
-.fnf-toolbar[data-v-dab9c0ec]:hover {
+.fnf-toolbar[data-v-7df4a799]:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.handle[data-v-dab9c0ec] {
+.handle[data-v-7df4a799] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,15 +29,15 @@
   transition: opacity 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
 }
-.handle[data-v-dab9c0ec]:hover {
+.handle[data-v-7df4a799]:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.1);
 }
-.handle svg[data-v-dab9c0ec] {
+.handle svg[data-v-7df4a799] {
   display: block;
   opacity: 0.8;
 }
-.fact-btn[data-v-dab9c0ec] {
+.fact-btn[data-v-7df4a799] {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -57,22 +57,22 @@
   min-width: 110px;
   justify-content: center;
 }
-.fact-btn[data-v-dab9c0ec]:hover {
+.fact-btn[data-v-7df4a799]:hover {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
-.fact-btn[data-v-dab9c0ec]:active {
+.fact-btn[data-v-7df4a799]:active {
   transform: translateY(0);
 }
-.fact-btn .icon[data-v-dab9c0ec] {
+.fact-btn .icon[data-v-7df4a799] {
   font-size: 14px;
   line-height: 1;
 }
-.fact-btn .text[data-v-dab9c0ec] {
+.fact-btn .text[data-v-7df4a799] {
   line-height: 1;
 }
-.close-btn[data-v-dab9c0ec] {
+.close-btn[data-v-7df4a799] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,30 +90,30 @@
   transition: opacity 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
 }
-.close-btn[data-v-dab9c0ec]:hover {
+.close-btn[data-v-7df4a799]:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.1);
 }
 
-.fnf-bubble-content[data-v-92409c6f] {
+.fnf-bubble-content[data-v-42c4da95] {
   width: 100%;
 }
-.fnf-page-overlay[data-v-92409c6f] {
-  animation: fnf-fade-in-92409c6f 0.3s ease;
+.fnf-page-overlay[data-v-42c4da95] {
+  animation: fnf-fade-in-42c4da95 0.3s ease;
 }
-.spinner[data-v-92409c6f] {
+.spinner[data-v-42c4da95] {
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin-92409c6f 0.8s linear infinite;
+  animation: spin-42c4da95 0.8s linear infinite;
 }
-@keyframes spin-92409c6f {
+@keyframes spin-42c4da95 {
 to { transform: rotate(360deg);
 }
 }
-@keyframes fnf-fade-in-92409c6f {
+@keyframes fnf-fade-in-42c4da95 {
 from {
     opacity: 0;
 }
@@ -121,7 +121,7 @@ to {
     opacity: 1;
 }
 }
-.content-preview[data-v-92409c6f] {
+.content-preview[data-v-42c4da95] {
   background: rgba(0,0,0,0.2);
   padding: 14px 16px;
   border-radius: 10px;
@@ -132,7 +132,7 @@ to {
   border-left: 3px solid rgba(255,255,255,0.4);
   margin-bottom: 0;
 }
-.learn-more-btn[data-v-92409c6f] {
+.learn-more-btn[data-v-42c4da95] {
   font-family: inherit;
 }
 
@@ -144,7 +144,7 @@ to { transform: translateX(0);
 }
 }
 
-.fnf-notification-toast[data-v-a65707d6] {
+.fnf-notification-toast[data-v-28fa64cb] {
   position: fixed;
   top: 20px;
   left: 50%;
@@ -157,21 +157,21 @@ to { transform: translateX(0);
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 9999999;
-  animation: fnfToastFadeIn-a65707d6 0.3s ease;
+  animation: fnfToastFadeIn-28fa64cb 0.3s ease;
 }
-.fnf-toast-info[data-v-a65707d6] {
+.fnf-toast-info[data-v-28fa64cb] {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
-.fnf-toast-warning[data-v-a65707d6] {
+.fnf-toast-warning[data-v-28fa64cb] {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
-.fnf-toast-error[data-v-a65707d6] {
+.fnf-toast-error[data-v-28fa64cb] {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
-.fnf-toast-success[data-v-a65707d6] {
+.fnf-toast-success[data-v-28fa64cb] {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
-@keyframes fnfToastFadeIn-a65707d6 {
+@keyframes fnfToastFadeIn-28fa64cb {
 from {
     opacity: 0;
     transform: translateX(-50%) translateY(-10px);

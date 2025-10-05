@@ -10,7 +10,7 @@
     <div 
       class="handle"
       @mousedown="startDrag"
-      title="Drag to move"
+      title="Przeciągnij aby przesunąć"
     >
       <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
         <circle cx="3" cy="3" r="1.5"/>
@@ -22,15 +22,15 @@
     <button 
       class="fact-btn"
       @click="handleFactCheck"
-      title="Select element to fact-check"
+      title="Wybierz element do sprawdzenia faktów"
     >
       <span class="icon">🛡️</span>
-      <span class="text">Fact-check</span>
+      <span class="text">Sprawdź fakty</span>
     </button>
     <button 
       class="close-btn"
       @click="onClose"
-      title="Hide toolbar"
+      title="Ukryj pasek narzędzi"
     >
       ×
     </button>

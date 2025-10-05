@@ -85,7 +85,7 @@
                 @mouseenter="learnMoreHover = true"
                 @mouseleave="learnMoreHover = false"
               >
-                Learn More →
+                Dowiedz się więcej →
               </button>
             </div>
             
@@ -129,7 +129,7 @@ const mode = ref('hover');
 
 // Bubble state
 const state = ref('loading'); // 'loading', 'result', 'error'
-const loadingMessage = ref('Fact checking…');
+const loadingMessage = ref('Sprawdzanie faktów…');
 const errorMessage = ref('');
 const result = ref(null);
 const analyzedText = ref('');
@@ -492,22 +492,22 @@ const icon = computed(() => {
 
 const resultLabel = computed(() => {
   const status = result.value?.status;
-  if (status === 'fake') return 'Fake News Alert';
-  if (status === 'true') return 'Verified Content';
-  if (status === 'unsure') return 'Uncertain';
+  if (status === 'fake') return 'Alert: Fałszywe wiadomości';
+  if (status === 'true') return 'Zweryfikowana treść';
+  if (status === 'unsure') return 'Niepewne';
   return 'Not in Database'; // no_data or default
 });
 
 const resultSummary = computed(() => {
   const status = result.value?.status;
   if (status === 'fake') {
-    return `This content has been flagged as fake news (${percentage.value}% confidence).`;
+    return `Ta treść została oznaczona jako fałszywe wiadomości (${percentage.value}% pewności).`;
   } else if (status === 'true') {
-    return `This content has been verified as true (${percentage.value}% confidence).`;
+    return `Ta treść została zweryfikowana jako prawdziwa (${percentage.value}% pewności).`;
   } else if (status === 'unsure') {
-    return `We're uncertain about this content (${percentage.value}% confidence). Please verify with additional sources.`;
+    return `Nie jesteśmy pewni co do tej treści (${percentage.value}% pewności). Proszę zweryfikować z dodatkowymi źródłami.`;
   }
-  return 'This content is not in our fact-checking database.';
+  return 'Ta treść nie znajduje się w naszej bazie danych sprawdzania faktów.';
 });
 
 const contentPreview = computed(() => {
@@ -713,7 +713,7 @@ const measureBubbleHeight = () => {
 };
 
 // Methods - exposed for parent to call
-const setState_Loading = (message = 'Fact checking…') => {
+const setState_Loading = (message = 'Sprawdzanie faktów…') => {
   state.value = 'loading';
   loadingMessage.value = message;
 };
