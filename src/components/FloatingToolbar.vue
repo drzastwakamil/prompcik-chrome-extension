@@ -21,7 +21,7 @@
     </div>
     <button 
       class="fact-btn"
-      @click="onFactCheck"
+      @click="handleFactCheck"
       title="Select element to fact-check"
     >
       <span class="icon">🛡️</span>
@@ -40,6 +40,7 @@
 <script>
 export default {
   name: 'FloatingToolbar',
+  emits: ['fact-check', 'close'],
   data() {
     return {
       visible: true,
@@ -63,11 +64,11 @@ export default {
     }
   },
   methods: {
-    onFactCheck() {
+    handleFactCheck() {
       this.$emit('fact-check');
     },
     onClose() {
-      this.visible = false;
+      this.$emit('close');
     },
     startDrag(e) {
       this.isDragging = true;

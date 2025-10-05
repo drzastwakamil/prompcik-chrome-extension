@@ -1,43 +1,5 @@
 
-.fnf-bubble-content[data-v-7d9e6c13] {
-  width: 100%;
-}
-.spinner[data-v-7d9e6c13] {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin-7d9e6c13 0.8s linear infinite;
-}
-@keyframes spin-7d9e6c13 {
-to { transform: rotate(360deg);
-}
-}
-.content-preview[data-v-7d9e6c13] {
-  background: rgba(0,0,0,0.2);
-  padding: 14px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.6;
-  font-style: italic;
-  opacity: 0.9;
-  border-left: 3px solid rgba(255,255,255,0.4);
-  margin-bottom: 0;
-}
-.learn-more-btn[data-v-7d9e6c13] {
-  font-family: inherit;
-}
-
-/* Keep only animations as they can't be inlined */
-@keyframes fnfSlideIn {
-from { transform: translateX(100%);
-}
-to { transform: translateX(0);
-}
-}
-
-.fnf-toolbar[data-v-277caf16] {
+.fnf-toolbar[data-v-c8a6b4a1] {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   align-items: center;
@@ -53,10 +15,10 @@ to { transform: translateX(0);
   user-select: none;
   transition: box-shadow 0.2s ease;
 }
-.fnf-toolbar[data-v-277caf16]:hover {
+.fnf-toolbar[data-v-c8a6b4a1]:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.handle[data-v-277caf16] {
+.handle[data-v-c8a6b4a1] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,15 +29,15 @@ to { transform: translateX(0);
   transition: opacity 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
 }
-.handle[data-v-277caf16]:hover {
+.handle[data-v-c8a6b4a1]:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.1);
 }
-.handle svg[data-v-277caf16] {
+.handle svg[data-v-c8a6b4a1] {
   display: block;
   opacity: 0.8;
 }
-.fact-btn[data-v-277caf16] {
+.fact-btn[data-v-c8a6b4a1] {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -95,22 +57,22 @@ to { transform: translateX(0);
   min-width: 110px;
   justify-content: center;
 }
-.fact-btn[data-v-277caf16]:hover {
+.fact-btn[data-v-c8a6b4a1]:hover {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
-.fact-btn[data-v-277caf16]:active {
+.fact-btn[data-v-c8a6b4a1]:active {
   transform: translateY(0);
 }
-.fact-btn .icon[data-v-277caf16] {
+.fact-btn .icon[data-v-c8a6b4a1] {
   font-size: 14px;
   line-height: 1;
 }
-.fact-btn .text[data-v-277caf16] {
+.fact-btn .text[data-v-c8a6b4a1] {
   line-height: 1;
 }
-.close-btn[data-v-277caf16] {
+.close-btn[data-v-c8a6b4a1] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,9 +90,58 @@ to { transform: translateX(0);
   transition: opacity 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
 }
-.close-btn[data-v-277caf16]:hover {
+.close-btn[data-v-c8a6b4a1]:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.fnf-bubble-content[data-v-5cf834e5] {
+  width: 100%;
+}
+.fnf-page-overlay[data-v-5cf834e5] {
+  animation: fnf-fade-in-5cf834e5 0.3s ease;
+}
+.spinner[data-v-5cf834e5] {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin-5cf834e5 0.8s linear infinite;
+}
+@keyframes spin-5cf834e5 {
+to { transform: rotate(360deg);
+}
+}
+@keyframes fnf-fade-in-5cf834e5 {
+from {
+    opacity: 0;
+}
+to {
+    opacity: 1;
+}
+}
+.content-preview[data-v-5cf834e5] {
+  background: rgba(0,0,0,0.2);
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  font-style: italic;
+  opacity: 0.9;
+  border-left: 3px solid rgba(255,255,255,0.4);
+  margin-bottom: 0;
+}
+.learn-more-btn[data-v-5cf834e5] {
+  font-family: inherit;
+}
+
+/* Keep only animations as they can't be inlined */
+@keyframes fnfSlideIn {
+from { transform: translateX(100%);
+}
+to { transform: translateX(0);
+}
 }
 
 .fnf-notification-toast[data-v-a65707d6] {
@@ -169,8 +180,4 @@ to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
-}
-
-.fnf-hover-highlight[data-v-aa3ba9bb] {
-  /* Styles are applied via inline styles for dynamic values */
 }

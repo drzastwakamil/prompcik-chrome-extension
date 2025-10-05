@@ -36,7 +36,7 @@ export default defineConfig({
         entryFileNames: 'content.js',
         chunkFileNames: 'chunks/[name].js',
         assetFileNames: (assetInfo) => {
-          // Give content CSS a different name to avoid popup build overwriting it
+          // Give content CSS a different name to avoid background build overwriting it
           if (assetInfo.name?.endsWith('.css')) {
             return 'content-style[extname]';
           }
@@ -47,7 +47,7 @@ export default defineConfig({
         inlineDynamicImports: true
       }
     },
-    emptyOutDir: false, // Don't empty - we'll build popup separately
+    emptyOutDir: false, // Don't empty - we'll build background separately
     cssCodeSplit: false,
     minify: false // Easier debugging for Chrome extensions
   },
