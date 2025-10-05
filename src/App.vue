@@ -7,24 +7,15 @@
       @close="unmountApp"
     />
     
-    <!-- Hover Highlight for selection mode -->
-    <HoverHighlight
+    <!-- Unified Fact Check Highlight (hover + bubble in one) -->
+    <FactCheckHighlight
       v-if="selectionMode.active"
       :active="true"
-      color="#22c55e"
-      :border-width="2"
       :is-extension-element="isExtensionElement"
+      :ref="el => factCheckHighlight.ref = el"
       @element-selected="handleElementSelection"
       @cancel="stopFactCheckSelection"
-    />
-    
-    <!-- Fact Check Bubble -->
-    <FactCheckBubble
-      v-if="bubble.visible"
-      :anchor-element="bubble.anchorElement"
-      :text="bubble.text"
-      :ref="el => bubble.ref = el"
-      @close="closeBubble"
+      @close="stopFactCheckSelection"
       @learn-more="handleLearnMore"
     />
     
@@ -51,8 +42,7 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import FloatingToolbar from './components/FloatingToolbar.vue';
-import HoverHighlight from './components/HoverHighlight.vue';
-import FactCheckBubble from './components/FactCheckBubble.vue';
+import FactCheckHighlight from './components/FactCheckHighlight.vue';
 import FactCheckSidePanel from './components/FactCheckSidePanel.vue';
 import NotificationToast from './components/NotificationToast.vue';
 
@@ -69,10 +59,7 @@ const selectionMode = reactive({
   prevCursor: ''
 });
 
-const bubble = reactive({
-  visible: false,
-  anchorElement: null,
-  text: '',
+const factCheckHighlight = reactive({
   ref: null
 });
 
@@ -211,8 +198,8 @@ function stopFactCheckSelection() {
 
 // Element selection handler
 async function handleElementSelection(target) {
-  stopFactCheckSelection();
-
+  // Don't stop selection mode yet - let the component handle the transition
+  
   // Extract text from clicked element
   let container = target;
   try {
@@ -232,6 +219,7 @@ async function handleElementSelection(target) {
   if (!text || text.length === 0) {
     console.log('No text found in element - cannot fact-check');
     showNotification('⚠️ Cannot fact-check: No text found in element', 'warning');
+    stopFactCheckSelection();
     return;
   }
   
@@ -239,16 +227,11 @@ async function handleElementSelection(target) {
   console.log('Container element used for extraction:', container);
   console.log('Extracted text (sent to backend):', text);
 
-  // Show bubble
-  bubble.visible = true;
-  bubble.anchorElement = container;
-  bubble.text = text;
-  
   // Wait for next tick to ensure ref is set
   await new Promise(resolve => setTimeout(resolve, 0));
   
-  if (bubble.ref) {
-    bubble.ref.setState_Loading('Fact checking…');
+  if (factCheckHighlight.ref) {
+    factCheckHighlight.ref.setState_Loading('Fact checking…');
     
     // Call background for analysis
     try {
@@ -264,28 +247,21 @@ async function handleElementSelection(target) {
       if (response && response.success) {
         const result = response.result || {};
         console.log('Backend result:', result);
-        bubble.ref.setState_Result(result, text);
+        factCheckHighlight.ref.setState_Result(result, text);
       } else {
         console.error('Fact-check failed:', response);
-        bubble.ref.setState_Error(`Fact-check failed: ${response?.error || 'Unknown error'}`);
+        factCheckHighlight.ref.setState_Error(`Fact-check failed: ${response?.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Fact-check exception:', err);
-      bubble.ref.setState_Error(`Fact-check error: ${String(err?.message || err)}`);
+      factCheckHighlight.ref.setState_Error(`Fact-check error: ${String(err?.message || err)}`);
     }
   }
 }
 
 // Bubble handlers
-function closeBubble() {
-  bubble.visible = false;
-  bubble.anchorElement = null;
-  bubble.text = '';
-  bubble.ref = null;
-}
-
 function handleLearnMore({ result, text }) {
-  closeBubble();
+  stopFactCheckSelection();
   showSidePanel(result, text, 'text');
 }
 

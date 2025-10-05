@@ -95,24 +95,22 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* All styles are applied via inline computed styles for dynamic positioning */
-
-.fnf-bubble-content[data-v-61d71196] {
+.fnf-bubble-content[data-v-59c9fa29] {
   width: 100%;
 }
-.spinner[data-v-61d71196] {
+.spinner[data-v-59c9fa29] {
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin-61d71196 0.8s linear infinite;
+  animation: spin-59c9fa29 0.8s linear infinite;
 }
-@keyframes spin-61d71196 {
+@keyframes spin-59c9fa29 {
 to { transform: rotate(360deg);
 }
 }
-.content-preview[data-v-61d71196] {
+.content-preview[data-v-59c9fa29] {
   background: rgba(0,0,0,0.2);
   padding: 14px 16px;
   border-radius: 10px;
@@ -123,7 +121,7 @@ to { transform: rotate(360deg);
   border-left: 3px solid rgba(255,255,255,0.4);
   margin-bottom: 0;
 }
-.learn-more-btn[data-v-61d71196] {
+.learn-more-btn[data-v-59c9fa29] {
   font-family: inherit;
 }
 
