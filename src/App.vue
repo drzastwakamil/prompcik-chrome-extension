@@ -55,8 +55,7 @@ const props = defineProps({
 const showToolbar = ref(true);
 
 const selectionMode = reactive({
-  active: false,
-  prevCursor: ''
+  active: false
 });
 
 const factCheckHighlight = reactive({
@@ -204,14 +203,12 @@ function startFactCheckSelection() {
     
     // Restart selection mode
     selectionMode.active = true;
-    selectionMode.prevCursor = document.body.style.cursor;
-    document.body.style.cursor = 'crosshair';
+    document.body.classList.add('fnf-selection-mode-active');
     console.log('[Selection Mode] Restarted after reset');
   } else {
     // Normal start
     selectionMode.active = true;
-    selectionMode.prevCursor = document.body.style.cursor;
-    document.body.style.cursor = 'crosshair';
+    document.body.classList.add('fnf-selection-mode-active');
     console.log('[Selection Mode] Started');
   }
 }
@@ -220,7 +217,7 @@ function stopFactCheckSelection() {
   if (!selectionMode.active) return;
   
   selectionMode.active = false;
-  document.body.style.cursor = selectionMode.prevCursor || '';
+  document.body.classList.remove('fnf-selection-mode-active');
   console.log('[Selection Mode] Stopped');
 }
 
@@ -311,10 +308,30 @@ function closeSidePanel() {
 // App unmount
 function unmountApp() {
   stopFactCheckSelection();
+  // Additional safety cleanup - ensure CSS class is removed
+  document.body.classList.remove('fnf-selection-mode-active');
   if (props.onUnmount) {
     props.onUnmount();
   }
 }
+
+// Safety cleanup handlers to ensure CSS class is always removed
+// Handle page visibility changes
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    document.body.classList.remove('fnf-selection-mode-active');
+  }
+});
+
+// Handle page unload
+window.addEventListener('beforeunload', () => {
+  document.body.classList.remove('fnf-selection-mode-active');
+});
+
+// Handle any unhandled errors
+window.addEventListener('error', () => {
+  document.body.classList.remove('fnf-selection-mode-active');
+});
 
 // Expose methods for external calls (URL monitoring)
 defineExpose({

@@ -131,5 +131,36 @@
   }
 }
 
+/* Robust cursor enforcement for highlighting mode */
+/* This ensures our crosshair cursor always takes precedence over website CSS */
+.fnf-selection-mode-active,
+.fnf-selection-mode-active *,
+.fnf-selection-mode-active *:hover,
+.fnf-selection-mode-active *:focus,
+.fnf-selection-mode-active *:active {
+  cursor: crosshair !important;
+}
+
+/* Additional enforcement for common elements that websites often style */
+.fnf-selection-mode-active a,
+.fnf-selection-mode-active button,
+.fnf-selection-mode-active input,
+.fnf-selection-mode-active textarea,
+.fnf-selection-mode-active select,
+.fnf-selection-mode-active [role="button"],
+.fnf-selection-mode-active [onclick],
+.fnf-selection-mode-active .btn,
+.fnf-selection-mode-active .button,
+.fnf-selection-mode-active .link,
+.fnf-selection-mode-active .clickable {
+  cursor: crosshair !important;
+}
+
+/* Ensure cursor is enforced even on pseudo-elements */
+.fnf-selection-mode-active *::before,
+.fnf-selection-mode-active *::after {
+  cursor: crosshair !important;
+}
+
 /* (removed) .fnf-processed highlight — auto discovery removed */
 
